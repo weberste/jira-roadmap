@@ -9,6 +9,13 @@ var STATUS_COLORS = {
     'done': '#2da44e'           // green (Done)
 };
 
+// Light tints of each status color, used for the "not yet done" portion of the progress bar
+var STATUS_COLORS_LIGHT = {
+    'new': '#d0d7de',
+    'indeterminate': '#cce0ff',
+    'done': '#aceebb'
+};
+
 var PIXELS_PER_DAY = 4;
 var LABEL_WIDTH    = 300;
 var VIEW_MONTHS    = 9;  // used for the nav label range display
@@ -99,8 +106,14 @@ function initRoadmap(data) {
         html += '<a href="' + escHtml(init.url) + '" target="_blank" class="rm-key">' + escHtml(init.key) + '</a> ';
         html += '<span class="rm-title">' + escHtml(init.title) + '</span>';
         html += '</div>';
+        var doneEpics = 0;
+        for (var e = 0; e < init.epics.length; e++) {
+            if (init.epics[e].status_category === 'done') doneEpics++;
+        }
+        var progressPct = init.epics.length > 0 ? Math.round(doneEpics / init.epics.length * 100) : null;
+
         html += '<div class="rm-timeline-col" style="width:' + totalTimelineWidth + 'px">';
-        html += renderBar(init, timelineStart);
+        html += renderBar(init, timelineStart, progressPct);
         html += '</div>';
         html += '</div>';
 
@@ -235,7 +248,7 @@ window.toggleDoneItems = function(show) {
 
 // ── Rendering helpers ─────────────────────────────────────────────────────────
 
-function renderBar(item, timelineStart) {
+function renderBar(item, timelineStart, progressPct) {
     if (!item.start_date || !item.end_date) {
         return '<div class="rm-no-dates">No dates</div>';
     }
@@ -245,13 +258,21 @@ function renderBar(item, timelineStart) {
     var width = Math.max(Math.floor((end - start) / 86400000) * PIXELS_PER_DAY, 4);
     var color = STATUS_COLORS[item.status_category] || STATUS_COLORS['new'];
 
+    var bg;
+    if (progressPct !== null && progressPct !== undefined && progressPct > 0 && progressPct < 100) {
+        var light = STATUS_COLORS_LIGHT[item.status_category] || STATUS_COLORS_LIGHT['new'];
+        bg = 'linear-gradient(to right, ' + color + ' ' + progressPct + '%, ' + light + ' ' + progressPct + '%)';
+    } else {
+        bg = color;
+    }
+
     var tooltip = item.key + ': ' + item.title +
         '\nStatus: ' + item.status +
         '\nStart: '  + item.start_date +
         '\nEnd: '    + item.end_date;
 
     return '<div class="rm-bar" style="left:' + left + 'px;width:' + width +
-        'px;background:' + color + '" title="' + escAttr(tooltip) + '"></div>';
+        'px;background:' + bg + '" title="' + escAttr(tooltip) + '"></div>';
 }
 
 function monthName(d) {
