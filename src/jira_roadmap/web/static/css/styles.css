@@ -329,10 +329,15 @@ footer code {
     transition: all var(--transition);
 }
 
-.rm-nav-btn:hover {
+.rm-nav-btn:hover:not(:disabled) {
     background: var(--accent-light);
     border-color: var(--accent-primary);
     color: var(--accent-primary);
+}
+
+.rm-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
 }
 
 .rm-nav-label {

@@ -131,6 +131,7 @@ function initRoadmap(data) {
     rmOuter.addEventListener('scroll', function() {
         syncMonthHeader(rmOuter.scrollLeft);
         updateNavLabelFromScroll();
+        updateNavButtons();
     });
 
     // Nav buttons
@@ -146,6 +147,7 @@ function initRoadmap(data) {
     rmOuter.scrollLeft = initScroll;
     syncMonthHeader(initScroll);
     updateNavLabel();
+    updateNavButtons();
 
     // Expand / collapse
     var initRows = container.querySelectorAll('.rm-init-row');
@@ -171,6 +173,15 @@ function rmNavigate(direction) {
     rmOuter.scrollLeft = scrollLeft;
     syncMonthHeader(scrollLeft);
     updateNavLabel();
+    updateNavButtons();
+}
+
+function updateNavButtons() {
+    var prevBtn = document.getElementById('rm-nav-prev');
+    var nextBtn = document.getElementById('rm-nav-next');
+    if (!prevBtn || !nextBtn || !rmOuter) return;
+    prevBtn.disabled = rmOuter.scrollLeft <= 0;
+    nextBtn.disabled = rmOuter.scrollLeft >= rmOuter.scrollWidth - rmOuter.clientWidth - 1;
 }
 
 function syncMonthHeader(scrollLeft) {
