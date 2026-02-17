@@ -152,6 +152,15 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
                         linked_epics.append(linked_key)
                         epic_keys_set.add(linked_key)
 
+        # Also collect epics from child work items (parent-child hierarchy)
+        for subtask in fields.get("subtasks", []):
+            subtask_type = subtask.get("fields", {}).get("issuetype", {}).get("name", "")
+            if subtask_type == "Epic":
+                subtask_key = subtask.get("key", "")
+                if subtask_key and subtask_key not in linked_epics:
+                    linked_epics.append(subtask_key)
+                    epic_keys_set.add(subtask_key)
+
         initiative_epic_links[issue_key] = linked_epics
 
     # Fetch epics in bulk if any were found

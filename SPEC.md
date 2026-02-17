@@ -9,7 +9,7 @@ Fetches initiatives from JIRA via JQL, resolves their linked epics, and renders 
 ## How it works
 
 1. User enters a JQL query targeting initiatives (e.g. `type = Initiative AND project = ACME`)
-2. App fetches matching issues from JIRA, extracts linked epics via issue links
+2. App fetches matching issues from JIRA, extracts epics via issue links and child work items (subtask hierarchy)
 3. Epics are fetched in bulk to read their start/end date custom fields
 4. A timeline is rendered with initiative rows (expandable) and epic rows underneath
 5. Timeline bounds are derived from the earliest/latest dates across all epics, with 1-month padding
@@ -50,8 +50,9 @@ end_date_field = "customfield_10016"     # Target End
 - **No CLI** — web-only interface, no typer dependency
 - **No changelog parsing** — roadmap only needs summary, status, links, and date fields
 - **Dates come from custom fields** — not from sprint or status transitions
-- **Initiative dates are derived** — min/max of linked epic dates, not stored on the initiative itself
-- **Link type filtering** — optional, allows scoping to specific link types (e.g. only "Relates")
+- **Initiative dates are derived** — min/max of epic dates, not stored on the initiative itself
+- **Epics collected two ways** — via issue links (subject to link type filter) and via parent-child hierarchy (`subtasks` field, always included)
+- **Link type filtering** — optional, scopes which issue link types are followed (e.g. only "Relates"); does not affect child work items
 - **Status categories** — uses JIRA's built-in category (new/indeterminate/done) for bar colors
 - **Pure JS timeline** — no Chart.js or external visualization library
 
