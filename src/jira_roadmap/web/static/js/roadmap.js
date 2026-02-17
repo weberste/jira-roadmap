@@ -9,6 +9,9 @@ var STATUS_COLORS = {
     'done': '#2da44e'           // green (Done)
 };
 
+var hideDone = true;
+var expanded = {};
+
 function initRoadmap(data) {
     var container = document.getElementById('roadmap-timeline');
     if (!container || !data || !data.initiatives.length) return;
@@ -69,9 +72,10 @@ function initRoadmap(data) {
     for (var idx = 0; idx < data.initiatives.length; idx++) {
         var init = data.initiatives[idx];
         var initId = 'rm-init-' + idx;
+        var initDone = init.status_category === 'done';
 
         // Initiative row
-        html += '<div class="rm-row rm-init-row" data-toggle="' + initId + '">';
+        html += '<div class="rm-row rm-init-row" data-toggle="' + initId + '" data-done="' + initDone + '">';
         html += '<div class="rm-label-col">';
         html += '<span class="rm-expand-icon" id="icon-' + initId + '">&#9654;</span> ';
         html += '<a href="' + escHtml(init.url) + '" target="_blank" class="rm-key">' + escHtml(init.key) + '</a> ';
@@ -85,7 +89,8 @@ function initRoadmap(data) {
         // Epic rows (hidden by default)
         for (var j = 0; j < init.epics.length; j++) {
             var epic = init.epics[j];
-            html += '<div class="rm-row rm-epic-row ' + initId + '" style="display:none">';
+            var epicDone = epic.status_category === 'done';
+            html += '<div class="rm-row rm-epic-row ' + initId + '" data-done="' + epicDone + '" style="display:none">';
             html += '<div class="rm-label-col rm-epic-label">';
             html += '<a href="' + escHtml(epic.url) + '" target="_blank" class="rm-key">' + escHtml(epic.key) + '</a> ';
             html += '<span class="rm-title">' + escHtml(epic.title) + '</span>';
@@ -104,21 +109,50 @@ function initRoadmap(data) {
     var initRows = container.querySelectorAll('.rm-init-row');
     for (var i = 0; i < initRows.length; i++) {
         initRows[i].addEventListener('click', function(e) {
-            // Don't toggle if clicking a link
             if (e.target.tagName === 'A') return;
             var toggleId = this.getAttribute('data-toggle');
-            var epicRows = container.querySelectorAll('.' + toggleId);
+            expanded[toggleId] = !expanded[toggleId];
             var icon = document.getElementById('icon-' + toggleId);
-            var visible = epicRows.length > 0 && epicRows[0].style.display !== 'none';
-            for (var k = 0; k < epicRows.length; k++) {
-                epicRows[k].style.display = visible ? 'none' : '';
-            }
             if (icon) {
-                icon.innerHTML = visible ? '&#9654;' : '&#9660;';
+                icon.innerHTML = expanded[toggleId] ? '&#9660;' : '&#9654;';
             }
+            setEpicRowsVisibility(container, toggleId);
         });
     }
+
+    // Apply initial done filter
+    applyDoneFilter(container);
 }
+
+function setEpicRowsVisibility(container, initId) {
+    var epicRows = container.querySelectorAll('.' + initId);
+    for (var k = 0; k < epicRows.length; k++) {
+        var row = epicRows[k];
+        var isDone = row.getAttribute('data-done') === 'true';
+        row.style.display = (expanded[initId] && (!hideDone || !isDone)) ? '' : 'none';
+    }
+}
+
+function applyDoneFilter(container) {
+    var initRows = container.querySelectorAll('.rm-init-row');
+    for (var i = 0; i < initRows.length; i++) {
+        var row = initRows[i];
+        var isDone = row.getAttribute('data-done') === 'true';
+        if (isDone) {
+            row.style.display = hideDone ? 'none' : '';
+        }
+        var initId = row.getAttribute('data-toggle');
+        if (initId) {
+            setEpicRowsVisibility(container, initId);
+        }
+    }
+}
+
+window.toggleDoneItems = function(show) {
+    hideDone = !show;
+    var container = document.getElementById('roadmap-timeline');
+    if (container) applyDoneFilter(container);
+};
 
 function dateToPct(d, start, totalDays) {
     var days = (d - start) / (1000 * 60 * 60 * 24);

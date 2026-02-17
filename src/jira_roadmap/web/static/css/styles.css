@@ -290,6 +290,25 @@ footer code {
     border: 1px solid var(--border-color);
 }
 
+/* ===== Roadmap Controls ===== */
+.rm-controls {
+    margin-bottom: 12px;
+}
+
+.rm-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.rm-toggle-label input[type="checkbox"] {
+    cursor: pointer;
+}
+
 /* ===== Roadmap Timeline ===== */
 .roadmap-timeline {
     position: relative;
