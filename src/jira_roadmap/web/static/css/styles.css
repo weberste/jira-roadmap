@@ -244,36 +244,6 @@ footer code {
     margin-bottom: 24px;
 }
 
-/* ===== Summary Panel ===== */
-.summary-panel {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
-}
-
-.summary-item {
-    background: var(--bg-tertiary);
-    padding: 10px 14px;
-    border-radius: var(--radius-md);
-    text-align: center;
-    border: 1px solid var(--border-light);
-}
-
-.summary-item .value {
-    font-size: 1.35rem;
-    font-weight: 700;
-    color: var(--accent-primary);
-    line-height: 1.2;
-}
-
-.summary-item .label {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 2px;
-}
 
 /* ===== Button Spinner ===== */
 .btn-spinner {

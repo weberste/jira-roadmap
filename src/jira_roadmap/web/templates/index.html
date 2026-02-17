@@ -37,20 +37,7 @@
 </div>
 
 {% if result %}
-{% set ns = namespace(epic_count=0) %}
-{% for i in result.initiatives %}{% set ns.epic_count = ns.epic_count + i.epics|length %}{% endfor %}
 <div class="results-section">
-    <div class="summary-panel">
-        <div class="summary-item">
-            <div class="value">{{ result.initiatives | length }}</div>
-            <div class="label">Initiatives</div>
-        </div>
-        <div class="summary-item">
-            <div class="value">{{ ns.epic_count }}</div>
-            <div class="label">Epics</div>
-        </div>
-    </div>
-
     <div id="roadmap-timeline" class="roadmap-timeline"></div>
 </div>
 {% endif %}
