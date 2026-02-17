@@ -309,12 +309,46 @@ footer code {
     cursor: pointer;
 }
 
+/* ===== Roadmap Nav ===== */
+.rm-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.rm-nav-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 2px 12px 4px;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all var(--transition);
+}
+
+.rm-nav-btn:hover {
+    background: var(--accent-light);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.rm-nav-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 160px;
+    text-align: center;
+}
+
 /* ===== Roadmap Timeline ===== */
 .roadmap-timeline {
     position: relative;
-    overflow-x: auto;
 }
 
+/* Sticky header lives outside rm-outer so vertical page-scroll stickiness works */
 .rm-header {
     display: flex;
     border-bottom: 2px solid var(--border-color);
@@ -333,6 +367,22 @@ footer code {
     padding: 10px 16px;
 }
 
+/* Clips the months strip; months slide inside via translateX */
+.rm-header-timeline {
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Scrollable body container — scrollbar hidden, buttons + trackpad used instead */
+.rm-outer {
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.rm-outer::-webkit-scrollbar {
+    display: none;
+}
+
 .rm-label-col {
     width: 300px;
     min-width: 300px;
@@ -342,11 +392,18 @@ footer code {
     white-space: nowrap;
 }
 
+/* Body label cols stick to the left edge as the timeline scrolls */
+.rm-body .rm-label-col {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background: var(--bg-secondary);
+}
+
 .rm-timeline-col {
-    flex: 1;
     position: relative;
-    min-width: 600px;
     min-height: 32px;
+    flex-shrink: 0;
 }
 
 .rm-months {
@@ -377,7 +434,7 @@ footer code {
 .rm-gridlines {
     position: absolute;
     top: 0;
-    left: 300px;
+    left: 0;
     right: 0;
     bottom: 0;
     pointer-events: none;
@@ -409,6 +466,10 @@ footer code {
 }
 
 .rm-row:hover {
+    background: var(--accent-light);
+}
+
+.rm-row:hover .rm-label-col {
     background: var(--accent-light);
 }
 
