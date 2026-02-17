@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JIRA Roadmap</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230969da'/><path d='M50 5 A45 45 0 0 1 95 50 L50 50 Z' fill='%238250df'/><path d='M50 5 A45 45 0 0 0 5 50 L50 50 Z' fill='%23bf3989'/></svg>">
+    <link rel="stylesheet" href="{{ url_for('main.static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>JIRA Roadmap</h1>
+        </header>
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+        <footer>
+            <p>Config: <code>~/.jira-roadmap/config.toml</code></p>
+        </footer>
+    </div>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

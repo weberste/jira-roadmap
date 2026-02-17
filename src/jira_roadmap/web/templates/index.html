@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if not has_config %}
+<div class="setup-instructions">
+    <h2>Setup Required</h2>
+    <p>JIRA credentials are not configured. Create the config file:</p>
+    <code>~/.jira-roadmap/config.toml</code>
+    <p>Then refresh this page.</p>
+</div>
+{% else %}
+
+{% include "partials/error.html" %}
+
+<div class="form-section">
+    <form id="roadmap-form" method="POST" action="/">
+        <div class="form-group">
+            <label for="jql">JQL Query (initiatives)</label>
+            <input type="text" id="jql" name="jql" value="{{ jql or '' }}"
+                   placeholder='e.g. type = Initiative AND project = MYPROJ'>
+        </div>
+        <div class="form-row form-row-controls">
+            <div class="form-group">
+                <label for="link-types-input">Link Types (optional, comma-separated)</label>
+                <input type="text" id="link-types-input" name="link_types" value=""
+                       placeholder="Leave blank for all link types">
+            </div>
+            <div class="form-group form-group-btn">
+                <button type="submit" id="submit-btn" class="btn btn-primary">Load Roadmap</button>
+            </div>
+        </div>
+    </form>
+    <div id="link-types-hint" class="link-types-hint" style="display:none;">
+        <span class="hint-label">Available link types:</span>
+        <span id="link-types-list"></span>
+    </div>
+</div>
+
+{% if result %}
+{% set ns = namespace(epic_count=0) %}
+{% for i in result.initiatives %}{% set ns.epic_count = ns.epic_count + i.epics|length %}{% endfor %}
+<div class="results-section">
+    <div class="summary-panel">
+        <div class="summary-item">
+            <div class="value">{{ result.initiatives | length }}</div>
+            <div class="label">Initiatives</div>
+        </div>
+        <div class="summary-item">
+            <div class="value">{{ ns.epic_count }}</div>
+            <div class="label">Epics</div>
+        </div>
+    </div>
+
+    <div id="roadmap-timeline" class="roadmap-timeline"></div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('main.static', filename='js/roadmap.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load available link types
+    fetch('/api/link-types')
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(types) {
+            if (types.length) {
+                var hint = document.getElementById('link-types-hint');
+                var list = document.getElementById('link-types-list');
+                if (hint && list) {
+                    list.textContent = types.join(', ');
+                    hint.style.display = 'block';
+                }
+            }
+        })
+        .catch(function() {});
+
+    // Form submission loading state
+    var form = document.getElementById('roadmap-form');
+    var submitBtn = document.getElementById('submit-btn');
+    if (form) {
+        form.addEventListener('submit', function() {
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="btn-spinner"></span> Loading\u2026';
+            }
+        });
+    }
+
+    {% if result_json %}
+    // Initialize roadmap timeline
+    if (typeof initRoadmap === 'function') {
+        var roadmapData = {{ result_json | tojson | safe }};
+        initRoadmap(roadmapData);
+    }
+    {% endif %}
+});
+</script>
+{% endblock %}

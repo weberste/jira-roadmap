@@ -1,0 +1,20 @@
+{% if error %}
+<div class="alert alert-error">
+    <span class="alert-message">{{ error }}</span>
+    <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+</div>
+{% endif %}
+
+{% if warning %}
+<div class="alert alert-warning">
+    <span class="alert-message">{{ warning }}</span>
+    <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+</div>
+{% endif %}
+
+{% if info %}
+<div class="alert alert-info">
+    <span class="alert-message">{{ info }}</span>
+    <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+</div>
+{% endif %}
