@@ -1,5 +1,7 @@
 """HTTP route handlers for JIRA Roadmap web interface."""
 
+from datetime import date, timedelta
+
 from flask import Blueprint, jsonify, render_template, request
 
 from jira_roadmap.config import config_exists, load_config
@@ -102,6 +104,94 @@ def roadmap_post():
         result=result,
         result_json=roadmap_result_to_dict(result),
         jql=jql,
+    )
+
+
+@bp.route("/demo")
+def demo():
+    """Render the roadmap with built-in demo data (no JIRA credentials needed)."""
+    today = date.today()
+
+    def d(offset_days):
+        return (today + timedelta(days=offset_days)).isoformat()
+
+    result_json = {
+        "jql_query": "type = Initiative AND project = DEMO",
+        "jira_url": "https://demo.atlassian.net",
+        "timeline_start": d(-60),
+        "timeline_end": d(330),
+        "initiatives": [
+            {
+                "key": "INIT-1", "title": "Platform Modernisation",
+                "status": "In Progress", "status_category": "indeterminate",
+                "start_date": d(-45), "end_date": d(180),
+                "url": "#",
+                "epics": [
+                    {"key": "EPIC-1", "title": "API Gateway migration",
+                     "status": "In Progress", "status_category": "indeterminate",
+                     "start_date": d(-45), "end_date": d(45), "url": "#"},
+                    {"key": "EPIC-2", "title": "Service mesh rollout",
+                     "status": "To Do", "status_category": "new",
+                     "start_date": d(30), "end_date": d(120), "url": "#"},
+                    {"key": "EPIC-3", "title": "Observability uplift",
+                     "status": "To Do", "status_category": "new",
+                     "start_date": d(90), "end_date": d(180), "url": "#"},
+                ],
+            },
+            {
+                "key": "INIT-2", "title": "Mobile App Launch",
+                "status": "In Progress", "status_category": "indeterminate",
+                "start_date": d(-20), "end_date": d(150),
+                "url": "#",
+                "epics": [
+                    {"key": "EPIC-4", "title": "iOS MVP",
+                     "status": "In Progress", "status_category": "indeterminate",
+                     "start_date": d(-20), "end_date": d(60), "url": "#"},
+                    {"key": "EPIC-5", "title": "Android MVP",
+                     "status": "To Do", "status_category": "new",
+                     "start_date": d(50), "end_date": d(120), "url": "#"},
+                    {"key": "EPIC-6", "title": "Push notifications",
+                     "status": "To Do", "status_category": "new",
+                     "start_date": d(100), "end_date": d(150), "url": "#"},
+                ],
+            },
+            {
+                "key": "INIT-3", "title": "Analytics Dashboard",
+                "status": "To Do", "status_category": "new",
+                "start_date": d(60), "end_date": d(270),
+                "url": "#",
+                "epics": [
+                    {"key": "EPIC-7", "title": "Data pipeline",
+                     "status": "To Do", "status_category": "new",
+                     "start_date": d(60), "end_date": d(150), "url": "#"},
+                    {"key": "EPIC-8", "title": "Dashboard UI",
+                     "status": "To Do", "status_category": "new",
+                     "start_date": d(150), "end_date": d(270), "url": "#"},
+                ],
+            },
+            {
+                "key": "INIT-4", "title": "Legacy System Migration",
+                "status": "Done", "status_category": "done",
+                "start_date": d(-150), "end_date": d(-10),
+                "url": "#",
+                "epics": [
+                    {"key": "EPIC-9", "title": "Data extraction",
+                     "status": "Done", "status_category": "done",
+                     "start_date": d(-150), "end_date": d(-80), "url": "#"},
+                    {"key": "EPIC-10", "title": "Cutover & decommission",
+                     "status": "Done", "status_category": "done",
+                     "start_date": d(-80), "end_date": d(-10), "url": "#"},
+                ],
+            },
+        ],
+    }
+
+    return render_template(
+        "index.html",
+        has_config=True,
+        result=True,
+        result_json=result_json,
+        jql=result_json["jql_query"],
     )
 
 
