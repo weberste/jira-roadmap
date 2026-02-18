@@ -18,7 +18,7 @@ var STATUS_COLORS_LIGHT = {
 
 var PIXELS_PER_DAY = 4;
 var LABEL_WIDTH    = 300;
-var VIEW_MONTHS    = 9;  // used for the nav label range display
+var VIEW_MONTHS    = 12;  // used for the nav label range display
 
 var hideDone = true;
 var expanded = {};
