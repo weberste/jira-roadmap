@@ -28,10 +28,12 @@ var rmTimelineStart      = null;
 var rmViewStart          = null;  // first-of-month date at the left edge of the visible window
 var rmTotalTimelineWidth = 0;     // total pixel width of the timeline area
 var rmRedrawArrows       = null;  // function to redraw dependency arrows; set during init
+var rmShowDeps           = false; // dependency arrows hidden by default
 
 function initRoadmap(data) {
     var container = document.getElementById('roadmap-timeline');
     if (!container || !data || !data.initiatives.length) return;
+    rmShowDeps = false;
 
     var timelineStart = new Date(data.timeline_start + 'T00:00:00');
     var timelineEnd   = new Date(data.timeline_end   + 'T00:00:00');
@@ -82,6 +84,7 @@ function initRoadmap(data) {
     html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#9e3e3e"></span><input type="checkbox" value="cancelled"> Cancelled</label>';
     html += '</div>';
     html += '</div>';
+    html += '<button type="button" class="rm-filter-btn rm-deps-toggle" id="rm-deps-toggle">Dependencies</button>';
     html += '</div>';
 
     html += '<div class="rm-header">';
@@ -183,6 +186,16 @@ function initRoadmap(data) {
 
     // Dependency arrow drawing — captured in a closure so other handlers can call it
     rmRedrawArrows = function() { drawDependencyArrows(data, container); };
+
+    // Dependencies toggle button
+    var depsToggle = document.getElementById('rm-deps-toggle');
+    if (depsToggle) {
+        depsToggle.addEventListener('click', function() {
+            rmShowDeps = !rmShowDeps;
+            this.classList.toggle('rm-deps-toggle-on', rmShowDeps);
+            rmRedrawArrows();
+        });
+    }
 
     // Sync month header with body scroll (trackpad / touch / programmatic)
     rmOuter.addEventListener('scroll', function() {
@@ -472,6 +485,8 @@ function drawDependencyArrows(data, container) {
     var svg  = document.getElementById('rm-deps-svg');
     var body = container.querySelector('.rm-body');
     if (!svg || !body) return;
+
+    if (!rmShowDeps) { svg.innerHTML = ''; return; }
 
     var allDeps = (data.initiative_deps || []).concat(data.epic_deps || []);
     if (!allDeps.length) { svg.innerHTML = ''; return; }

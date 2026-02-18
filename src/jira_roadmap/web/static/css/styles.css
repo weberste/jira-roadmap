@@ -652,6 +652,12 @@ footer code {
     opacity: 1;
 }
 
+.rm-deps-toggle-on {
+    background: var(--accent-light) !important;
+    border-color: var(--accent-primary) !important;
+    color: var(--accent-primary) !important;
+}
+
 .rm-deps-svg {
     position: absolute;
     top: 0;
