@@ -373,10 +373,16 @@ footer code {
 .rm-outer {
     overflow-x: auto;
     scrollbar-width: none;
+    cursor: grab;
 }
 
 .rm-outer::-webkit-scrollbar {
     display: none;
+}
+
+.rm-outer.rm-dragging {
+    cursor: grabbing;
+    user-select: none;
 }
 
 .rm-label-col {

@@ -43,8 +43,13 @@ def _parse_date_field(fields: dict, field_id: str) -> date | None:
 def _get_status_category(status_field: dict) -> str:
     """Extract the status category key from a JIRA status field.
 
-    Returns one of: "new", "indeterminate", "done".
+    Returns one of: "new", "indeterminate", "done", "cancelled".
+
+    Cancelled statuses share the "done" statusCategory key in JIRA, so we
+    detect them by checking the status name before consulting the category.
     """
+    if "cancel" in status_field.get("name", "").lower():
+        return "cancelled"
     category = status_field.get("statusCategory", {})
     key = category.get("key", "").lower()
     if key in ("new", "indeterminate", "done"):
@@ -209,11 +214,15 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
             parent_key = story.get("fields", {}).get("parent", {}).get("key", "")
             if not parent_key or parent_key not in epic_keys_set:
                 continue
-            counts = story_counts.setdefault(parent_key, {"done": 0, "inprogress": 0, "total": 0})
+            counts = story_counts.setdefault(
+                parent_key, {"done": 0, "cancelled": 0, "inprogress": 0, "total": 0}
+            )
             counts["total"] += 1
             cat = _get_status_category(story.get("fields", {}).get("status", {}))
             if cat == "done":
                 counts["done"] += 1
+            elif cat == "cancelled":
+                counts["cancelled"] += 1
             elif cat == "indeterminate":
                 counts["inprogress"] += 1
 
@@ -239,6 +248,7 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
 
             counts = story_counts.get(epic_key, {})
             done_stories = counts.get("done", 0)
+            cancelled_stories = counts.get("cancelled", 0)
             inprogress_stories = counts.get("inprogress", 0)
             total_stories = counts.get("total", 0)
 
@@ -251,6 +261,7 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
                 end_date=epic_end,
                 url=f"{jira_url}/browse/{epic_key}",
                 done_stories=done_stories,
+                cancelled_stories=cancelled_stories,
                 inprogress_stories=inprogress_stories,
                 total_stories=total_stories,
             )
@@ -329,6 +340,7 @@ def roadmap_result_to_dict(result: RoadmapResult) -> dict:
             "end_date": _date_str(e.end_date),
             "url": e.url,
             "done_stories": e.done_stories,
+            "cancelled_stories": e.cancelled_stories,
             "inprogress_stories": e.inprogress_stories,
             "total_stories": e.total_stories,
         }

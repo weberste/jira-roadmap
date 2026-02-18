@@ -4,9 +4,10 @@
  */
 
 var STATUS_COLORS = {
-    'new': '#8b949e',           // gray  (To Do)
-    'indeterminate': '#0969da', // blue  (In Progress)
-    'done': '#2da44e'           // green (Done)
+    'new':           '#8b949e', // gray   (To Do)
+    'indeterminate': '#0969da', // blue   (In Progress)
+    'done':          '#2da44e', // green  (Done)
+    'cancelled':     '#9e3e3e'  // red    (Cancelled)
 };
 
 
@@ -16,9 +17,9 @@ var STATUS_COL_WIDTH = 120;
 var VIEW_MONTHS      = 11;   // months shown in nav label (1 past + current + 9 future)
 var VISIBLE_MONTHS   = 11;   // months that should fill the visible timeline area
 
-// Status categories hidden per row type. Default: show all.
-var hiddenInitCategories = {};
-var hiddenEpicCategories = {};
+// Status categories hidden per row type. Default: hide cancelled only.
+var hiddenInitCategories = { 'cancelled': true };
+var hiddenEpicCategories = { 'cancelled': true };
 var expanded = {};
 
 // State shared between init and nav helpers
@@ -66,6 +67,7 @@ function initRoadmap(data) {
     html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#8b949e"></span><input type="checkbox" value="new" checked> To Do</label>';
     html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#0969da"></span><input type="checkbox" value="indeterminate" checked> In Progress</label>';
     html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#2da44e"></span><input type="checkbox" value="done" checked> Done</label>';
+    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#9e3e3e"></span><input type="checkbox" value="cancelled"> Cancelled</label>';
     html += '</div>';
     html += '</div>';
     html += '<div class="rm-filter-group" data-filter-type="epic">';
@@ -74,6 +76,7 @@ function initRoadmap(data) {
     html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#8b949e"></span><input type="checkbox" value="new" checked> To Do</label>';
     html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#0969da"></span><input type="checkbox" value="indeterminate" checked> In Progress</label>';
     html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#2da44e"></span><input type="checkbox" value="done" checked> Done</label>';
+    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#9e3e3e"></span><input type="checkbox" value="cancelled"> Cancelled</label>';
     html += '</div>';
     html += '</div>';
     html += '</div>';
@@ -126,15 +129,16 @@ function initRoadmap(data) {
         html += '<a href="' + escHtml(init.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(init.title) + '">' + escHtml(init.title) + '</a>';
         html += '</div>';
         html += '<div class="rm-status-col">' + renderStatusBadge(init.status, init.status_category) + '</div>';
-        var doneEpics = 0, inprogressEpics = 0;
+        var doneEpics = 0, cancelledEpics = 0, inprogressEpics = 0;
         for (var e = 0; e < init.epics.length; e++) {
             var esc = init.epics[e].status_category;
             if (esc === 'done') doneEpics++;
+            else if (esc === 'cancelled') cancelledEpics++;
             else if (esc === 'indeterminate') inprogressEpics++;
         }
         var initChildren = init.epics.length > 0
-            ? { done: doneEpics, inprogress: inprogressEpics,
-                todo: init.epics.length - doneEpics - inprogressEpics,
+            ? { done: doneEpics, cancelled: cancelledEpics, inprogress: inprogressEpics,
+                todo: init.epics.length - doneEpics - cancelledEpics - inprogressEpics,
                 total: init.epics.length, label: 'Epics' }
             : null;
 
@@ -150,10 +154,11 @@ function initRoadmap(data) {
             html += '<a href="' + escHtml(epic.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(epic.title) + '">' + escHtml(epic.title) + '</a>';
             html += '</div>';
             html += '<div class="rm-status-col">' + renderStatusBadge(epic.status, epic.status_category) + '</div>';
+            var epicCancelled  = epic.cancelled_stories  || 0;
             var epicInprogress = epic.inprogress_stories || 0;
             var epicChildren = epic.total_stories > 0
-                ? { done: epic.done_stories, inprogress: epicInprogress,
-                    todo: Math.max(0, epic.total_stories - epic.done_stories - epicInprogress),
+                ? { done: epic.done_stories, cancelled: epicCancelled, inprogress: epicInprogress,
+                    todo: Math.max(0, epic.total_stories - epic.done_stories - epicCancelled - epicInprogress),
                     total: epic.total_stories, label: 'Stories' }
                 : null;
 
@@ -182,6 +187,58 @@ function initRoadmap(data) {
     // Nav buttons
     document.getElementById('rm-nav-prev').addEventListener('click', function() { rmNavigate(-1); });
     document.getElementById('rm-nav-next').addEventListener('click', function() { rmNavigate(1);  });
+
+    // Drag-to-scroll on the timeline
+    var isDragging = false, didDrag = false, dragStartX = 0, dragStartScroll = 0;
+
+    rmOuter.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        isDragging = true;
+        didDrag    = false;
+        dragStartX      = e.clientX;
+        dragStartScroll = rmOuter.scrollLeft;
+    });
+
+    window.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        var dx = e.clientX - dragStartX;
+        if (Math.abs(dx) > 4) {
+            didDrag = true;
+            rmOuter.classList.add('rm-dragging');
+        }
+        rmOuter.scrollLeft = dragStartScroll - dx;
+        syncMonthHeader(rmOuter.scrollLeft);
+        updateNavLabelFromScroll();
+        updateNavButtons();
+    });
+
+    window.addEventListener('mouseup', function() {
+        isDragging = false;
+        rmOuter.classList.remove('rm-dragging');
+    });
+
+    // Suppress the click that fires after a drag so links/rows don't activate
+    rmOuter.addEventListener('click', function(e) {
+        if (didDrag) {
+            e.stopPropagation();
+            e.preventDefault();
+            didDrag = false;
+        }
+    }, true);
+
+    // Touch drag
+    var touchStartX = 0, touchStartScroll = 0;
+    rmOuter.addEventListener('touchstart', function(e) {
+        touchStartX      = e.touches[0].clientX;
+        touchStartScroll = rmOuter.scrollLeft;
+    }, { passive: true });
+    rmOuter.addEventListener('touchmove', function(e) {
+        var dx = e.touches[0].clientX - touchStartX;
+        rmOuter.scrollLeft = touchStartScroll - dx;
+        syncMonthHeader(rmOuter.scrollLeft);
+        updateNavLabelFromScroll();
+        updateNavButtons();
+    }, { passive: true });
 
     // Initial scroll: 1 month before the current month
     var initViewStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
@@ -328,14 +385,21 @@ function renderBar(item, timelineStart, children) {
 
     var bg;
     if (children && children.total > 0) {
-        var donePct = Math.round(children.done      / children.total * 100);
-        var inpPct  = Math.round(children.inprogress / children.total * 100);
-        if (donePct + inpPct > 100) inpPct = 100 - donePct;
-        var midPct  = donePct + inpPct;
+        var t            = children.total;
+        var donePct      = Math.round(children.done       / t * 100);
+        var cancelledPct = Math.round(children.cancelled  / t * 100);
+        var inpPct       = Math.round(children.inprogress / t * 100);
+        // Clamp to avoid rounding overflow
+        if (donePct + cancelledPct > 100) cancelledPct = 100 - donePct;
+        if (donePct + cancelledPct + inpPct > 100) inpPct = 100 - donePct - cancelledPct;
+        var p1 = donePct;
+        var p2 = p1 + cancelledPct;
+        var p3 = p2 + inpPct;
         bg = 'linear-gradient(to right,' +
-            '#2da44e 0%,#2da44e ' + donePct + '%,' +
-            '#0969da ' + donePct + '%,#0969da ' + midPct + '%,' +
-            '#8b949e ' + midPct  + '%,#8b949e 100%)';
+            '#2da44e 0%,#2da44e ' + p1 + '%,' +
+            '#9e3e3e ' + p1 + '%,#9e3e3e ' + p2 + '%,' +
+            '#0969da ' + p2 + '%,#0969da ' + p3 + '%,' +
+            '#8b949e ' + p3 + '%,#8b949e 100%)';
     } else {
         bg = STATUS_COLORS[item.status_category] || STATUS_COLORS['new'];
     }
@@ -345,10 +409,12 @@ function renderBar(item, timelineStart, children) {
         '\nStart: '  + item.start_date +
         '\nEnd: '    + item.end_date;
     if (children && children.total > 0) {
-        tooltip += '\n' + children.label + ': ' +
-            children.done + ' done, ' +
-            children.inprogress + ' in progress, ' +
-            children.todo + ' to do';
+        var parts = [];
+        if (children.done)       parts.push(children.done       + ' done');
+        if (children.cancelled)  parts.push(children.cancelled  + ' cancelled');
+        if (children.inprogress) parts.push(children.inprogress + ' in progress');
+        if (children.todo)       parts.push(children.todo       + ' to do');
+        tooltip += '\n' + children.label + ': ' + parts.join(', ');
     }
 
     return '<div class="rm-bar" style="left:' + left + 'px;width:' + width +
