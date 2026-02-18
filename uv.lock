@@ -214,6 +214,11 @@ dev = [
     { name = "ruff" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "flask", specifier = ">=3.0.0" },
@@ -225,6 +230,9 @@ requires-dist = [
     { name = "tomli-w", specifier = ">=1.0.0" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.0.2" }]
 
 [[package]]
 name = "markupsafe"
