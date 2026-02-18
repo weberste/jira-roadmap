@@ -29,8 +29,6 @@ var rmViewStart          = null;  // first-of-month date at the left edge of the
 var rmTotalTimelineWidth = 0;     // total pixel width of the timeline area
 var rmRedrawArrows       = null;  // function to redraw dependency arrows; set during init
 var rmShowDeps           = false; // dependency arrows hidden by default
-var rmNodateLeft         = 0;     // left pixel bound for no-date in-progress bars
-var rmNodateRight        = 0;     // right pixel bound for no-date in-progress bars
 
 function initRoadmap(data) {
     var container = document.getElementById('roadmap-timeline');
@@ -59,16 +57,6 @@ function initRoadmap(data) {
     var totalTimelineWidth = totalDays * PIXELS_PER_DAY;
     rmTotalTimelineWidth   = totalTimelineWidth;
 
-    // Default span for no-date in-progress bars: the same 11-month window used as
-    // the initial viewport (1 month before current → VISIBLE_MONTHS ahead), clamped
-    // to the actual timeline bounds.  This prevents undated bars from stretching
-    // across years just because other items have far-future dates.
-    var _now = new Date(); _now.setHours(0, 0, 0, 0);
-    var _ndStart = new Date(_now.getFullYear(), _now.getMonth() - 1, 1);
-    var _ndEnd   = new Date(_ndStart.getFullYear(), _ndStart.getMonth() + VISIBLE_MONTHS, 1);
-    rmNodateLeft  = Math.max(0, Math.floor((_ndStart - timelineStart) / 86400000) * PIXELS_PER_DAY);
-    rmNodateRight = Math.min(totalTimelineWidth, Math.floor((_ndEnd - timelineStart) / 86400000) * PIXELS_PER_DAY);
-    if (rmNodateRight <= rmNodateLeft) rmNodateRight = totalTimelineWidth; // fallback
 
     var html = '';
 
@@ -419,22 +407,19 @@ function renderBar(item, timelineStart, children) {
         return '<div class="rm-no-dates">No dates</div>';
     }
 
-    // Compute pixel position.
-    // When both dates are missing use the default 11-month viewport window so the
-    // bar doesn't stretch across the entire (potentially multi-year) timeline.
-    // When only one date is missing, extend to the timeline edge on that side.
+    // Compute pixel position; missing edges extend to the full timeline boundary.
     var left, rightPx;
     if (hasStart) {
         var start = new Date(item.start_date + 'T00:00:00');
         left = Math.floor((start - timelineStart) / 86400000) * PIXELS_PER_DAY;
     } else {
-        left = !hasEnd ? rmNodateLeft : 0;
+        left = 0;
     }
     if (hasEnd) {
         var end = new Date(item.end_date + 'T00:00:00');
         rightPx = Math.floor((end - timelineStart) / 86400000) * PIXELS_PER_DAY;
     } else {
-        rightPx = !hasStart ? rmNodateRight : rmTotalTimelineWidth;
+        rightPx = rmTotalTimelineWidth;
     }
     var width = Math.max(rightPx - left, 4);
 
