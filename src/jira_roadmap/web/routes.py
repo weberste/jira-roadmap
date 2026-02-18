@@ -120,6 +120,16 @@ def demo():
         "jira_url": "https://demo.atlassian.net",
         "timeline_start": d(-60),
         "timeline_end": d(330),
+        # (from, to) pairs — "from" blocks "to"
+        "initiative_deps": [
+            ["INIT-4", "INIT-1"],   # Legacy migration must finish before Platform Modernisation
+            ["INIT-1", "INIT-3"],   # Platform Modernisation before Analytics Dashboard
+        ],
+        "epic_deps": [
+            ["EPIC-1", "EPIC-2"],   # API Gateway migration before Service mesh rollout
+            ["EPIC-2", "EPIC-3"],   # Service mesh rollout before Observability uplift
+            ["EPIC-4", "EPIC-5"],   # iOS MVP before Android MVP
+        ],
         "initiatives": [
             {
                 "key": "INIT-1", "title": "Platform Modernisation",
@@ -130,15 +140,18 @@ def demo():
                     {"key": "EPIC-1", "title": "API Gateway migration",
                      "status": "In Progress", "status_category": "indeterminate",
                      "start_date": d(-45), "end_date": d(45), "url": "#",
-                     "done_stories": 5, "total_stories": 8},
+                     "done_stories": 5, "inprogress_stories": 2, "cancelled_stories": 0,
+                     "total_stories": 8},
                     {"key": "EPIC-2", "title": "Service mesh rollout",
                      "status": "To Do", "status_category": "new",
                      "start_date": d(30), "end_date": d(120), "url": "#",
-                     "done_stories": 0, "total_stories": 6},
+                     "done_stories": 0, "inprogress_stories": 0, "cancelled_stories": 0,
+                     "total_stories": 6},
                     {"key": "EPIC-3", "title": "Observability uplift",
                      "status": "To Do", "status_category": "new",
                      "start_date": d(90), "end_date": d(180), "url": "#",
-                     "done_stories": 0, "total_stories": 4},
+                     "done_stories": 0, "inprogress_stories": 0, "cancelled_stories": 0,
+                     "total_stories": 4},
                 ],
             },
             {
@@ -150,15 +163,18 @@ def demo():
                     {"key": "EPIC-4", "title": "iOS MVP",
                      "status": "In Progress", "status_category": "indeterminate",
                      "start_date": d(-20), "end_date": d(60), "url": "#",
-                     "done_stories": 7, "total_stories": 10},
+                     "done_stories": 7, "inprogress_stories": 2, "cancelled_stories": 1,
+                     "total_stories": 10},
                     {"key": "EPIC-5", "title": "Android MVP",
                      "status": "To Do", "status_category": "new",
                      "start_date": d(50), "end_date": d(120), "url": "#",
-                     "done_stories": 2, "total_stories": 9},
+                     "done_stories": 2, "inprogress_stories": 0, "cancelled_stories": 0,
+                     "total_stories": 9},
                     {"key": "EPIC-6", "title": "Push notifications",
                      "status": "To Do", "status_category": "new",
                      "start_date": d(100), "end_date": d(150), "url": "#",
-                     "done_stories": 0, "total_stories": 3},
+                     "done_stories": 0, "inprogress_stories": 0, "cancelled_stories": 0,
+                     "total_stories": 3},
                 ],
             },
             {
@@ -170,11 +186,13 @@ def demo():
                     {"key": "EPIC-7", "title": "Data pipeline",
                      "status": "To Do", "status_category": "new",
                      "start_date": d(60), "end_date": d(150), "url": "#",
-                     "done_stories": 0, "total_stories": 7},
+                     "done_stories": 0, "inprogress_stories": 0, "cancelled_stories": 0,
+                     "total_stories": 7},
                     {"key": "EPIC-8", "title": "Dashboard UI",
                      "status": "To Do", "status_category": "new",
                      "start_date": d(150), "end_date": d(270), "url": "#",
-                     "done_stories": 0, "total_stories": 5},
+                     "done_stories": 0, "inprogress_stories": 0, "cancelled_stories": 0,
+                     "total_stories": 5},
                 ],
             },
             {
@@ -186,11 +204,39 @@ def demo():
                     {"key": "EPIC-9", "title": "Data extraction",
                      "status": "Done", "status_category": "done",
                      "start_date": d(-150), "end_date": d(-80), "url": "#",
-                     "done_stories": 6, "total_stories": 6},
+                     "done_stories": 6, "inprogress_stories": 0, "cancelled_stories": 0,
+                     "total_stories": 6},
                     {"key": "EPIC-10", "title": "Cutover & decommission",
                      "status": "Done", "status_category": "done",
                      "start_date": d(-80), "end_date": d(-10), "url": "#",
-                     "done_stories": 4, "total_stories": 4},
+                     "done_stories": 4, "inprogress_stories": 0, "cancelled_stories": 0,
+                     "total_stories": 4},
+                ],
+            },
+            {
+                # Initiative with no dates: all 3 epics are in progress but have no
+                # roadmap date fields set.  Each bar should span the full timeline
+                # with a fading left and right edge.
+                "key": "INIT-5", "title": "Continuous Improvement",
+                "status": "In Progress", "status_category": "indeterminate",
+                "start_date": None, "end_date": None,
+                "url": "#",
+                "epics": [
+                    {"key": "EPIC-11", "title": "Performance optimisation",
+                     "status": "In Progress", "status_category": "indeterminate",
+                     "start_date": None, "end_date": None, "url": "#",
+                     "done_stories": 2, "inprogress_stories": 3, "cancelled_stories": 0,
+                     "total_stories": 8},
+                    {"key": "EPIC-12", "title": "Developer experience",
+                     "status": "In Progress", "status_category": "indeterminate",
+                     "start_date": None, "end_date": None, "url": "#",
+                     "done_stories": 0, "inprogress_stories": 2, "cancelled_stories": 0,
+                     "total_stories": 5},
+                    {"key": "EPIC-13", "title": "Documentation refresh",
+                     "status": "In Progress", "status_category": "indeterminate",
+                     "start_date": None, "end_date": None, "url": "#",
+                     "done_stories": 1, "inprogress_stories": 1, "cancelled_stories": 0,
+                     "total_stories": 4},
                 ],
             },
         ],

@@ -127,6 +127,24 @@ def _make_epic_issue(key, summary, start_date=None, end_date=None):
     }
 
 
+def _make_inprogress_epic_issue(key, summary):
+    """Build a raw in-progress epic issue dict with no start/end dates."""
+    return {
+        "key": key,
+        "fields": {
+            "summary": summary,
+            "issuetype": {"name": "Epic"},
+            "status": {
+                "name": "In Progress",
+                "statusCategory": {"key": "indeterminate", "name": "In Progress"},
+            },
+            "issuelinks": [],
+            "cf_10015": None,
+            "cf_10016": None,
+        },
+    }
+
+
 class TestFetchRoadmap:
     """Tests for fetch_roadmap function."""
 
@@ -387,6 +405,68 @@ class TestFetchRoadmap:
         assert len(init.epics) == 0
         assert init.start_date is None
         assert init.end_date is None
+
+    @patch("jira_roadmap.roadmap.JiraClient")
+    @patch("jira_roadmap.roadmap.load_config")
+    @patch("jira_roadmap.roadmap.config_exists", return_value=True)
+    def test_inprogress_epics_without_dates_have_null_dates(
+        self, mock_exists, mock_load, mock_jira_cls
+    ):
+        """In-progress epics with no roadmap dates should produce null start/end
+        in the result.  The JS renderer turns these into full-timeline fading bars.
+        """
+        mock_load.return_value = _make_config()
+        mock_client = MagicMock()
+
+        initiative = _make_initiative_issue(
+            "INIT-1", "Undated Initiative", ["EPIC-1", "EPIC-2", "EPIC-3"]
+        )
+        initiative["fields"]["status"] = {
+            "name": "In Progress",
+            "statusCategory": {"key": "indeterminate", "name": "In Progress"},
+        }
+
+        epics = [
+            _make_inprogress_epic_issue("EPIC-1", "Undated Epic 1"),
+            _make_inprogress_epic_issue("EPIC-2", "Undated Epic 2"),
+            _make_inprogress_epic_issue("EPIC-3", "Undated Epic 3"),
+        ]
+
+        def search_side_effect(jql, **kwargs):
+            if "Initiative" in jql:
+                return [initiative]
+            if "parent in" in jql and "INIT" in jql:
+                return []  # no child epics via parent hierarchy
+            if "key in" in jql:
+                return epics  # bulk epic fetch
+            return []  # no stories
+
+        mock_client.search_roadmap_issues.side_effect = search_side_effect
+        mock_jira_cls.return_value = mock_client
+
+        result = fetch_roadmap("type = Initiative")
+
+        assert len(result.initiatives) == 1
+        init = result.initiatives[0]
+        assert init.status_category == "indeterminate"
+        assert init.start_date is None, "initiative start_date must be None when all epics have no dates"
+        assert init.end_date is None, "initiative end_date must be None when all epics have no dates"
+
+        assert len(init.epics) == 3
+        for epic in init.epics:
+            assert epic.status_category == "indeterminate"
+            assert epic.start_date is None, f"{epic.key} start_date must be None"
+            assert epic.end_date is None, f"{epic.key} end_date must be None"
+
+        # Serialised output must also carry null dates so the JS renderer
+        # can apply the full-timeline fading bar treatment.
+        d = roadmap_result_to_dict(result)
+        d_init = d["initiatives"][0]
+        assert d_init["start_date"] is None
+        assert d_init["end_date"] is None
+        for d_epic in d_init["epics"]:
+            assert d_epic["start_date"] is None
+            assert d_epic["end_date"] is None
 
 
 class TestRoadmapResultToDict:
