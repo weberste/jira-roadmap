@@ -163,6 +163,25 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
 
         initiative_epic_links[issue_key] = linked_epics
 
+    # Find additional child epics via the JIRA parent field (company-managed projects
+    # with issue hierarchy don't surface these in issuelinks or subtasks).
+    initiative_keys = [issue["key"] for issue in raw_initiatives]
+    parent_jql = "issueType = Epic AND parent in (" + ", ".join(initiative_keys) + ")"
+    try:
+        parent_child_epics = client.search_roadmap_issues(parent_jql, date_fields=date_fields)
+    except (AuthenticationError, RateLimitError, JiraClientConnectionError, ValueError):
+        parent_child_epics = []
+
+    for child in parent_child_epics:
+        child_key = child["key"]
+        parent_key = child.get("fields", {}).get("parent", {}).get("key", "")
+        if parent_key not in initiative_epic_links:
+            continue
+        existing = initiative_epic_links[parent_key]
+        if child_key not in existing:
+            existing.append(child_key)
+            epic_keys_set.add(child_key)
+
     # Fetch epics in bulk if any were found
     epic_data: dict[str, dict] = {}
     if epic_keys_set:

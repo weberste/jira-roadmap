@@ -313,6 +313,66 @@ class TestFetchRoadmap:
     @patch("jira_roadmap.roadmap.JiraClient")
     @patch("jira_roadmap.roadmap.load_config")
     @patch("jira_roadmap.roadmap.config_exists", return_value=True)
+    def test_collects_epics_via_parent_field(self, mock_exists, mock_load, mock_jira_cls):
+        mock_load.return_value = _make_config()
+        mock_client = MagicMock()
+
+        # Initiative with no issuelinks and no subtasks — epics are children via parent field
+        init_issue = {
+            "key": "INIT-1",
+            "fields": {
+                "summary": "Test",
+                "issuetype": {"name": "Initiative"},
+                "status": {
+                    "name": "In Progress",
+                    "statusCategory": {"key": "indeterminate", "name": "In Progress"},
+                },
+                "issuelinks": [],
+                "subtasks": [],
+            },
+        }
+
+        # Returned by the parent-field JQL query
+        child_epic_raw = {
+            "key": "EPIC-1",
+            "fields": {
+                "summary": "Child Epic via Parent",
+                "issuetype": {"name": "Epic"},
+                "status": {
+                    "name": "To Do",
+                    "statusCategory": {"key": "new", "name": "To Do"},
+                },
+                "issuelinks": [],
+                "subtasks": [],
+                "parent": {"key": "INIT-1"},
+                "cf_10015": "2026-03-01",
+                "cf_10016": "2026-06-30",
+            },
+        }
+
+        epic_detail = _make_epic_issue("EPIC-1", "Child Epic via Parent", "2026-03-01", "2026-06-30")
+
+        def search_side_effect(jql, **kwargs):
+            if "Initiative" in jql:
+                return [init_issue]
+            if "parent in" in jql:
+                return [child_epic_raw]
+            return [epic_detail]
+
+        mock_client.search_roadmap_issues.side_effect = search_side_effect
+        mock_jira_cls.return_value = mock_client
+
+        result = fetch_roadmap("type = Initiative")
+
+        init = result.initiatives[0]
+        assert len(init.epics) == 1
+        assert init.epics[0].key == "EPIC-1"
+        assert init.start_date is not None
+        assert init.end_date is not None
+
+    @patch("jira_roadmap.roadmap.JiraClient")
+    @patch("jira_roadmap.roadmap.load_config")
+    @patch("jira_roadmap.roadmap.config_exists", return_value=True)
     def test_initiative_without_epics(self, mock_exists, mock_load, mock_jira_cls):
         mock_load.return_value = _make_config()
         mock_client = MagicMock()

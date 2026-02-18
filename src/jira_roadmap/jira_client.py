@@ -86,7 +86,7 @@ class JiraClient:
         client = self._get_client()
 
         try:
-            fields = ["summary", "issuetype", "status", "issuelinks", "subtasks"]
+            fields = ["summary", "issuetype", "status", "issuelinks", "subtasks", "parent"]
             if date_fields:
                 fields.extend(date_fields)
 
