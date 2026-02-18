@@ -196,6 +196,15 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
             epic_start = _parse_date_field(epic_fields, start_field)
             epic_end = _parse_date_field(epic_fields, end_field)
 
+            # Count child stories/tasks from JIRA parent-child hierarchy
+            done_stories = 0
+            total_stories = 0
+            for subtask in epic_fields.get("subtasks", []):
+                subtask_status = subtask.get("fields", {}).get("status", {})
+                total_stories += 1
+                if _get_status_category(subtask_status) == "done":
+                    done_stories += 1
+
             epic = RoadmapEpic(
                 key=epic_key,
                 title=epic_fields.get("summary", ""),
@@ -204,6 +213,8 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
                 start_date=epic_start,
                 end_date=epic_end,
                 url=f"{jira_url}/browse/{epic_key}",
+                done_stories=done_stories,
+                total_stories=total_stories,
             )
             epics.append(epic)
 
@@ -273,6 +284,8 @@ def roadmap_result_to_dict(result: RoadmapResult) -> dict:
             "start_date": _date_str(e.start_date),
             "end_date": _date_str(e.end_date),
             "url": e.url,
+            "done_stories": e.done_stories,
+            "total_stories": e.total_stories,
         }
 
     initiatives = []

@@ -15,6 +15,8 @@ class RoadmapEpic:
     start_date: date | None
     end_date: date | None
     url: str
+    done_stories: int = 0
+    total_stories: int = 0
 
 
 @dataclass

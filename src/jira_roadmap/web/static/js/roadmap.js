@@ -125,8 +125,12 @@ function initRoadmap(data) {
             html += '<a href="' + escHtml(epic.url) + '" target="_blank" class="rm-key">' + escHtml(epic.key) + '</a> ';
             html += '<span class="rm-title">' + escHtml(epic.title) + '</span>';
             html += '</div>';
+            var epicProgressPct = epic.total_stories > 0
+                ? Math.round(epic.done_stories / epic.total_stories * 100)
+                : null;
+
             html += '<div class="rm-timeline-col" style="width:' + totalTimelineWidth + 'px">';
-            html += renderBar(epic, timelineStart);
+            html += renderBar(epic, timelineStart, epicProgressPct);
             html += '</div>';
             html += '</div>';
         }
