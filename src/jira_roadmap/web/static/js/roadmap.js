@@ -22,8 +22,9 @@ var STATUS_COL_WIDTH = 120;
 var VIEW_MONTHS      = 11;   // months shown in nav label (1 past + current + 9 future)
 var VISIBLE_MONTHS   = 11;   // months that should fill the visible timeline area
 
-// Categories that are currently hidden. Default: hide "done" (covers Done + Cancelled).
-var hiddenCategories = { 'done': true };
+// Status categories hidden per row type. Default: hide "done" (Done + Cancelled).
+var hiddenInitCategories = { 'done': true };
+var hiddenEpicCategories = { 'done': true };
 var expanded = {};
 
 // State shared between init and nav helpers
@@ -65,16 +66,27 @@ function initRoadmap(data) {
     html += '<button class="rm-nav-btn" id="rm-nav-prev" type="button">&#8249;</button>';
     html += '<span class="rm-nav-label" id="rm-nav-label"></span>';
     html += '<button class="rm-nav-btn" id="rm-nav-next" type="button">&#8250;</button>';
+    html += '<div class="rm-filter-group" data-filter-type="initiative">';
+    html += '<button type="button" class="rm-filter-btn">Initiatives &#9662;</button>';
+    html += '<div class="rm-filter-dropdown" style="display:none">';
+    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#8b949e"></span><input type="checkbox" value="new" checked> To Do</label>';
+    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#0969da"></span><input type="checkbox" value="indeterminate" checked> In Progress</label>';
+    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#2da44e"></span><input type="checkbox" value="done"> Done</label>';
+    html += '</div>';
+    html += '</div>';
+    html += '<div class="rm-filter-group" data-filter-type="epic">';
+    html += '<button type="button" class="rm-filter-btn">Epics &#9662;</button>';
+    html += '<div class="rm-filter-dropdown" style="display:none">';
+    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#8b949e"></span><input type="checkbox" value="new" checked> To Do</label>';
+    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#0969da"></span><input type="checkbox" value="indeterminate" checked> In Progress</label>';
+    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#2da44e"></span><input type="checkbox" value="done"> Done</label>';
+    html += '</div>';
+    html += '</div>';
     html += '</div>';
 
     html += '<div class="rm-header">';
     html += '<div class="rm-label-col rm-header-label">Initiative / Epic</div>';
-    html += '<div class="rm-header-status">';
-    html += '<span class="rm-sf-label">Status</span>';
-    html += '<button class="rm-sf-dot rm-sf-new rm-sf-on" data-cat="new" title="To Do \u2013 click to hide"></button>';
-    html += '<button class="rm-sf-dot rm-sf-indeterminate rm-sf-on" data-cat="indeterminate" title="In Progress \u2013 click to hide"></button>';
-    html += '<button class="rm-sf-dot rm-sf-done rm-sf-off" data-cat="done" title="Done \u2013 click to show"></button>';
-    html += '</div>';
+    html += '<div class="rm-header-status">Status</div>';
     html += '<div class="rm-header-timeline">';
     html += '<div class="rm-months" id="rm-months-inner" style="width:' + totalTimelineWidth + 'px">';
     for (var i = 0; i < months.length; i++) {
@@ -192,20 +204,43 @@ function initRoadmap(data) {
         });
     }
 
-    // Status category filter buttons
-    var filterBtns = container.querySelectorAll('.rm-sf-dot');
-    for (var i = 0; i < filterBtns.length; i++) {
-        filterBtns[i].addEventListener('click', function() {
-            var cat = this.getAttribute('data-cat');
-            hiddenCategories[cat] = !hiddenCategories[cat];
-            var isHidden = hiddenCategories[cat];
-            this.classList.toggle('rm-sf-on', !isHidden);
-            this.classList.toggle('rm-sf-off', isHidden);
-            var labels = { 'new': 'To Do', 'indeterminate': 'In Progress', 'done': 'Done' };
-            this.title = (labels[cat] || cat) + (isHidden ? ' \u2013 click to show' : ' \u2013 click to hide');
-            applyStatusFilter(container);
-        });
+    // Status filter dropdowns
+    var filterGroups = container.querySelectorAll('.rm-filter-group');
+    for (var i = 0; i < filterGroups.length; i++) {
+        (function(group) {
+            var isInit   = group.getAttribute('data-filter-type') === 'initiative';
+            var btn      = group.querySelector('.rm-filter-btn');
+            var dropdown = group.querySelector('.rm-filter-dropdown');
+
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var wasOpen = dropdown.style.display !== 'none';
+                var allDDs  = container.querySelectorAll('.rm-filter-dropdown');
+                for (var j = 0; j < allDDs.length; j++) allDDs[j].style.display = 'none';
+                if (!wasOpen) dropdown.style.display = '';
+            });
+
+            dropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+
+            var checkboxes = group.querySelectorAll('input[type="checkbox"]');
+            for (var j = 0; j < checkboxes.length; j++) {
+                checkboxes[j].addEventListener('change', function() {
+                    if (isInit) {
+                        hiddenInitCategories[this.value] = !this.checked;
+                    } else {
+                        hiddenEpicCategories[this.value] = !this.checked;
+                    }
+                    applyStatusFilter(container);
+                });
+            }
+        })(filterGroups[i]);
     }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function() {
+        var allDDs = container.querySelectorAll('.rm-filter-dropdown');
+        for (var j = 0; j < allDDs.length; j++) allDDs[j].style.display = 'none';
+    });
 
     applyStatusFilter(container);
 }
@@ -257,7 +292,7 @@ function setEpicRowsVisibility(container, initId) {
     for (var k = 0; k < epicRows.length; k++) {
         var row = epicRows[k];
         var cat = row.getAttribute('data-status-category');
-        row.style.display = (expanded[initId] && !hiddenCategories[cat]) ? '' : 'none';
+        row.style.display = (expanded[initId] && !hiddenEpicCategories[cat]) ? '' : 'none';
     }
 }
 
@@ -266,7 +301,7 @@ function applyStatusFilter(container) {
     for (var i = 0; i < initRows.length; i++) {
         var row    = initRows[i];
         var cat    = row.getAttribute('data-status-category');
-        row.style.display = hiddenCategories[cat] ? 'none' : '';
+        row.style.display = hiddenInitCategories[cat] ? 'none' : '';
         var initId = row.getAttribute('data-toggle');
         if (initId) setEpicRowsVisibility(container, initId);
     }
