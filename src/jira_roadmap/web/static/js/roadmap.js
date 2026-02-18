@@ -23,9 +23,11 @@ var hiddenEpicCategories = { 'cancelled': true };
 var expanded = {};
 
 // State shared between init and nav helpers
-var rmOuter         = null;
-var rmTimelineStart = null;
-var rmViewStart     = null;  // first-of-month date at the left edge of the visible window
+var rmOuter              = null;
+var rmTimelineStart      = null;
+var rmViewStart          = null;  // first-of-month date at the left edge of the visible window
+var rmTotalTimelineWidth = 0;     // total pixel width of the timeline area
+var rmRedrawArrows       = null;  // function to redraw dependency arrows; set during init
 
 function initRoadmap(data) {
     var container = document.getElementById('roadmap-timeline');
@@ -51,6 +53,7 @@ function initRoadmap(data) {
 
     var totalDays          = Math.ceil((timelineEnd - timelineStart) / 86400000);
     var totalTimelineWidth = totalDays * PIXELS_PER_DAY;
+    rmTotalTimelineWidth   = totalTimelineWidth;
 
     var html = '';
 
@@ -123,7 +126,7 @@ function initRoadmap(data) {
     for (var idx = 0; idx < data.initiatives.length; idx++) {
         var init   = data.initiatives[idx];
         var initId = 'rm-init-' + idx;
-        html += '<div class="rm-row rm-init-row" data-toggle="' + initId + '" data-status-category="' + escAttr(init.status_category) + '">';
+        html += '<div class="rm-row rm-init-row" data-toggle="' + initId + '" data-status-category="' + escAttr(init.status_category) + '" data-item-key="' + escAttr(init.key) + '">';
         html += '<div class="rm-label-col">';
         html += '<span class="rm-expand-icon" id="icon-' + initId + '">&#9654;</span>';
         html += '<a href="' + escHtml(init.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(init.title) + '">' + escHtml(init.title) + '</a>';
@@ -149,7 +152,7 @@ function initRoadmap(data) {
 
         for (var j = 0; j < init.epics.length; j++) {
             var epic     = init.epics[j];
-            html += '<div class="rm-row rm-epic-row ' + initId + '" data-status-category="' + escAttr(epic.status_category) + '" style="display:none">';
+            html += '<div class="rm-row rm-epic-row ' + initId + '" data-status-category="' + escAttr(epic.status_category) + '" data-item-key="' + escAttr(epic.key) + '" style="display:none">';
             html += '<div class="rm-label-col rm-epic-label">';
             html += '<a href="' + escHtml(epic.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(epic.title) + '">' + escHtml(epic.title) + '</a>';
             html += '</div>';
@@ -169,6 +172,7 @@ function initRoadmap(data) {
         }
     }
 
+    html += '<svg id="rm-deps-svg" class="rm-deps-svg"></svg>';
     html += '</div>'; // rm-body
     html += '</div>'; // rm-inner
     html += '</div>'; // rm-outer
@@ -176,6 +180,9 @@ function initRoadmap(data) {
     container.innerHTML = html;
 
     rmOuter = document.getElementById('rm-outer');
+
+    // Dependency arrow drawing — captured in a closure so other handlers can call it
+    rmRedrawArrows = function() { drawDependencyArrows(data, container); };
 
     // Sync month header with body scroll (trackpad / touch / programmatic)
     rmOuter.addEventListener('scroll', function() {
@@ -261,6 +268,7 @@ function initRoadmap(data) {
             var icon = document.getElementById('icon-' + toggleId);
             if (icon) icon.innerHTML = expanded[toggleId] ? '&#9660;' : '&#9654;';
             setEpicRowsVisibility(container, toggleId);
+            if (rmRedrawArrows) rmRedrawArrows();
         });
     }
 
@@ -302,7 +310,7 @@ function initRoadmap(data) {
         for (var j = 0; j < allDDs.length; j++) allDDs[j].style.display = 'none';
     });
 
-    applyStatusFilter(container);
+    applyStatusFilter(container);  // also calls rmRedrawArrows via its own tail-call
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -365,6 +373,7 @@ function applyStatusFilter(container) {
         var initId = row.getAttribute('data-toggle');
         if (initId) setEpicRowsVisibility(container, initId);
     }
+    if (rmRedrawArrows) rmRedrawArrows();
 }
 
 // ── Rendering helpers ─────────────────────────────────────────────────────────
@@ -375,13 +384,30 @@ function renderStatusBadge(status, statusCategory) {
 }
 
 function renderBar(item, timelineStart, children) {
-    if (!item.start_date || !item.end_date) {
+    var isInProgress = item.status_category === 'indeterminate';
+    var hasStart     = !!item.start_date;
+    var hasEnd       = !!item.end_date;
+
+    // Items with no dates at all and not in progress keep the "No dates" label
+    if (!hasStart && !hasEnd && !isInProgress) {
         return '<div class="rm-no-dates">No dates</div>';
     }
-    var start = new Date(item.start_date + 'T00:00:00');
-    var end   = new Date(item.end_date   + 'T00:00:00');
-    var left  = Math.floor((start - timelineStart) / 86400000) * PIXELS_PER_DAY;
-    var width = Math.max(Math.floor((end - start) / 86400000) * PIXELS_PER_DAY, 4);
+
+    // Compute pixel position; missing edges extend to timeline boundaries
+    var left, rightPx;
+    if (hasStart) {
+        var start = new Date(item.start_date + 'T00:00:00');
+        left = Math.floor((start - timelineStart) / 86400000) * PIXELS_PER_DAY;
+    } else {
+        left = 0;
+    }
+    if (hasEnd) {
+        var end = new Date(item.end_date + 'T00:00:00');
+        rightPx = Math.floor((end - timelineStart) / 86400000) * PIXELS_PER_DAY;
+    } else {
+        rightPx = rmTotalTimelineWidth;
+    }
+    var width = Math.max(rightPx - left, 4);
 
     var bg;
     if (children && children.total > 0) {
@@ -406,8 +432,8 @@ function renderBar(item, timelineStart, children) {
 
     var tooltip = item.key + ': ' + item.title +
         '\nStatus: ' + item.status +
-        '\nStart: '  + item.start_date +
-        '\nEnd: '    + item.end_date;
+        '\nStart: '  + (item.start_date || '(open)') +
+        '\nEnd: '    + (item.end_date   || '(open)');
     if (children && children.total > 0) {
         var parts = [];
         if (children.done)       parts.push(children.done       + ' done');
@@ -417,8 +443,99 @@ function renderBar(item, timelineStart, children) {
         tooltip += '\n' + children.label + ': ' + parts.join(', ');
     }
 
-    return '<div class="rm-bar" style="left:' + left + 'px;width:' + width +
-        'px;background:' + bg + '" title="' + escAttr(tooltip) + '"></div>';
+    var style = 'left:' + left + 'px;width:' + width + 'px;background:' + bg;
+
+    // Apply a gradient mask to fade out open (undated) edges
+    if (!hasStart || !hasEnd) {
+        var fadeSize  = 20;
+        var maskStops = [];
+        if (!hasStart) {
+            maskStops.push('transparent 0%', 'black ' + fadeSize + 'px');
+        } else {
+            maskStops.push('black 0%');
+        }
+        if (!hasEnd) {
+            maskStops.push('black calc(100% - ' + fadeSize + 'px)', 'transparent 100%');
+        } else {
+            maskStops.push('black 100%');
+        }
+        var mask = 'linear-gradient(to right,' + maskStops.join(',') + ')';
+        style += ';-webkit-mask-image:' + mask + ';mask-image:' + mask;
+    }
+
+    return '<div class="rm-bar" style="' + style + '" title="' + escAttr(tooltip) + '"></div>';
+}
+
+// ── Dependency arrows ─────────────────────────────────────────────────────────
+
+function drawDependencyArrows(data, container) {
+    var svg  = document.getElementById('rm-deps-svg');
+    var body = container.querySelector('.rm-body');
+    if (!svg || !body) return;
+
+    var allDeps = (data.initiative_deps || []).concat(data.epic_deps || []);
+    if (!allDeps.length) { svg.innerHTML = ''; return; }
+
+    // Size SVG to cover the full scrollable body area
+    svg.setAttribute('width',  LABEL_WIDTH + STATUS_COL_WIDTH + rmTotalTimelineWidth);
+    svg.setAttribute('height', body.offsetHeight);
+
+    // Build key → row element lookup
+    var keyToRow = {};
+    var rows = body.querySelectorAll('.rm-row[data-item-key]');
+    for (var i = 0; i < rows.length; i++) {
+        keyToRow[rows[i].getAttribute('data-item-key')] = rows[i];
+    }
+
+    var defs =
+        '<defs>' +
+        '<marker id="rm-arrowhead" markerWidth="7" markerHeight="7"' +
+        ' refX="6" refY="3.5" orient="auto">' +
+        '<path d="M0,0.5 L0,6.5 L6,3.5 z" fill="rgba(100,100,100,0.75)"/>' +
+        '</marker>' +
+        '</defs>';
+
+    var paths = '';
+    var BAR_CENTER_Y = 6 + 10;  // bar top-offset + half bar height
+
+    for (var i = 0; i < allDeps.length; i++) {
+        var fromKey = allDeps[i][0];
+        var toKey   = allDeps[i][1];
+
+        var fromRow = keyToRow[fromKey];
+        var toRow   = keyToRow[toKey];
+        if (!fromRow || !toRow) continue;
+        if (fromRow.style.display === 'none' || toRow.style.display === 'none') continue;
+
+        var fromBar = fromRow.querySelector('.rm-bar');
+        var toBar   = toRow.querySelector('.rm-bar');
+        if (!fromBar || !toBar) continue;
+
+        var fromLeft  = parseFloat(fromBar.style.left)  || 0;
+        var fromWidth = parseFloat(fromBar.style.width) || 0;
+        var toLeft    = parseFloat(toBar.style.left)    || 0;
+
+        // Coordinates relative to .rm-body
+        var x1 = LABEL_WIDTH + STATUS_COL_WIDTH + fromLeft + fromWidth;
+        var y1 = fromRow.offsetTop + BAR_CENTER_Y;
+        var x2 = LABEL_WIDTH + STATUS_COL_WIDTH + toLeft;
+        var y2 = toRow.offsetTop + BAR_CENTER_Y;
+
+        // Smooth cubic bezier; control point offset scales with horizontal distance
+        var cp = Math.max(30, Math.abs(x2 - x1) * 0.4);
+        var d  = 'M' + x1 + ',' + y1 +
+                 ' C' + (x1 + cp) + ',' + y1 +
+                 ' ' + (x2 - cp) + ',' + y2 +
+                 ' ' + x2 + ',' + y2;
+
+        paths += '<path d="' + d + '"' +
+                 ' stroke="rgba(100,100,100,0.65)"' +
+                 ' stroke-width="1.5"' +
+                 ' fill="none"' +
+                 ' marker-end="url(#rm-arrowhead)"/>';
+    }
+
+    svg.innerHTML = defs + paths;
 }
 
 function monthName(d) {

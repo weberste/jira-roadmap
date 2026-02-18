@@ -1,6 +1,6 @@
 """Data models for JIRA Roadmap."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 
@@ -44,3 +44,5 @@ class RoadmapResult:
     timeline_start: date
     timeline_end: date
     jira_url: str
+    initiative_deps: list[tuple[str, str]] = field(default_factory=list)  # (from_key, to_key)
+    epic_deps: list[tuple[str, str]] = field(default_factory=list)        # (from_key, to_key)

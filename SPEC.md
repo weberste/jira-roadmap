@@ -4,7 +4,7 @@ Visualize JIRA initiative roadmaps on a timeline.
 
 ## What it does
 
-Fetches initiatives from JIRA via JQL, resolves their linked epics, and renders an interactive timeline showing when work starts and ends. Initiatives expand to show individual epic bars. Bars are color-coded by status category (To Do / In Progress / Done).
+Fetches initiatives from JIRA via JQL, resolves their linked epics, and renders an interactive timeline showing when work starts and ends. Initiatives expand to show individual epic bars. Bars are color-coded by status category (To Do / In Progress / Done). Dependency arrows connect initiatives to other initiatives and epics to other epics.
 
 ## How it works
 
@@ -52,7 +52,8 @@ end_date_field = "customfield_10016"     # Target End
 - **Dates come from custom fields** — not from sprint or status transitions
 - **Initiative dates are derived** — min/max of epic dates, not stored on the initiative itself
 - **Epics collected two ways** — via issue links (subject to link type filter) and via parent-child hierarchy (`subtasks` field, always included)
-- **Link type filtering** — optional, scopes which issue link types are followed (e.g. only "Relates"); does not affect child work items
+- **Link type filtering** — optional, scopes which issue link types are followed for epic collection (e.g. only "Relates"); does not affect child work items or dependency arrows
+- **Dependency arrows** — all outward issue links between same-type items (initiative→initiative, epic→epic) are rendered as bezier arrows; hidden when either endpoint is filtered/collapsed
 - **Status categories** — uses JIRA's built-in category (new/indeterminate/done) for bar colors
 - **Pure JS timeline** — no Chart.js or external visualization library
 

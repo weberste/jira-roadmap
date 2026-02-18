@@ -129,9 +129,12 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
 
     jira_url = config.jira_url.rstrip("/")
 
-    # Extract linked epic keys from initiatives
+    # Extract linked epic keys from initiatives, and initiative→initiative dependency links
     epic_keys_set: set[str] = set()
     initiative_epic_links: dict[str, list[str]] = {}  # initiative_key -> [epic_keys]
+    initiative_keys_set: set[str] = {issue["key"] for issue in raw_initiatives}
+    initiative_deps: list[tuple[str, str]] = []
+    seen_init_deps: set[tuple[str, str]] = set()
 
     for issue in raw_initiatives:
         issue_key = issue["key"]
@@ -140,12 +143,25 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
         linked_epics: list[str] = []
 
         for link in issue_links:
-            # Check link type filter
             link_type_name = link.get("type", {}).get("name", "")
+
+            # Collect initiative→initiative dependencies from outward links only
+            # (outward-only avoids double-counting since the inward side is the mirror)
+            outward = link.get("outwardIssue")
+            if outward:
+                other_key = outward.get("key", "")
+                other_type = outward.get("fields", {}).get("issuetype", {}).get("name", "")
+                if other_key and other_key in initiative_keys_set and other_key != issue_key:
+                    pair = (issue_key, other_key)
+                    if pair not in seen_init_deps:
+                        seen_init_deps.add(pair)
+                        initiative_deps.append(pair)
+
+            # Check link type filter for epic collection
             if link_types and link_type_name not in link_types:
                 continue
 
-            # Check both inward and outward linked issues
+            # Check both inward and outward linked issues for epics
             for direction in ("inwardIssue", "outwardIssue"):
                 linked_issue = link.get(direction)
                 if not linked_issue:
@@ -199,6 +215,20 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
 
         for epic in raw_epics:
             epic_data[epic["key"]] = epic
+
+    # Collect epic→epic dependency links from the epics' own issuelinks (outward only)
+    epic_deps: list[tuple[str, str]] = []
+    seen_epic_deps: set[tuple[str, str]] = set()
+    for epic_key, epic_raw in epic_data.items():
+        for link in epic_raw.get("fields", {}).get("issuelinks", []):
+            outward = link.get("outwardIssue")
+            if outward:
+                other_key = outward.get("key", "")
+                if other_key and other_key in epic_keys_set and other_key != epic_key:
+                    pair = (epic_key, other_key)
+                    if pair not in seen_epic_deps:
+                        seen_epic_deps.add(pair)
+                        epic_deps.append(pair)
 
     # Fetch child stories/tasks for each epic via the parent field.
     # (The subtasks field only captures JIRA Sub-task type issues, not Stories.)
@@ -321,6 +351,8 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
         timeline_start=timeline_start,
         timeline_end=timeline_end,
         jira_url=jira_url,
+        initiative_deps=initiative_deps,
+        epic_deps=epic_deps,
     )
 
 
@@ -364,4 +396,6 @@ def roadmap_result_to_dict(result: RoadmapResult) -> dict:
         "timeline_start": result.timeline_start.isoformat(),
         "timeline_end": result.timeline_end.isoformat(),
         "jira_url": result.jira_url,
+        "initiative_deps": [[a, b] for a, b in result.initiative_deps],
+        "epic_deps": [[a, b] for a, b in result.epic_deps],
     }
