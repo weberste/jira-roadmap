@@ -43,7 +43,7 @@ body {
 
 /* ===== Layout ===== */
 .container {
-    max-width: 1280px;
+    max-width: 1664px;
     margin: 0 auto;
     padding: 24px;
 }
@@ -292,21 +292,7 @@ footer code {
 
 /* ===== Roadmap Controls ===== */
 .rm-controls {
-    margin-bottom: 12px;
-}
-
-.rm-toggle-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    user-select: none;
-}
-
-.rm-toggle-label input[type="checkbox"] {
-    cursor: pointer;
+    display: none; /* reserved; controls are now inline in the header */
 }
 
 /* ===== Roadmap Nav ===== */
@@ -392,9 +378,10 @@ footer code {
     width: 300px;
     min-width: 300px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 /* Body label cols stick to the left edge as the timeline scrolls */
@@ -502,21 +489,106 @@ footer code {
     width: 14px;
 }
 
-.rm-key {
-    color: var(--accent-primary);
+.rm-title-link {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
     text-decoration: none;
-    font-weight: 500;
     font-size: 13px;
 }
 
-.rm-key:hover {
+.rm-title-link:hover {
     text-decoration: underline;
+    color: var(--accent-primary);
 }
 
-.rm-title {
-    color: var(--text-secondary);
-    font-size: 13px;
+.rm-init-row .rm-title-link {
+    font-weight: 500;
 }
+
+.rm-epic-row .rm-title-link {
+    color: var(--text-secondary);
+}
+
+/* ===== Status column ===== */
+.rm-status-col {
+    width: 120px;
+    min-width: 120px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+}
+
+.rm-body .rm-status-col {
+    position: sticky;
+    left: 300px;
+    z-index: 4;
+    background: var(--bg-secondary);
+}
+
+.rm-row:hover .rm-status-col {
+    background: #e6f0fb;
+}
+
+.rm-header-status {
+    width: 120px;
+    min-width: 120px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 8px;
+}
+
+.rm-status-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* ===== Status filter (header dots) ===== */
+.rm-sf-label {
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-right: 2px;
+    flex-shrink: 0;
+}
+
+.rm-sf-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: opacity var(--transition), transform var(--transition);
+}
+
+.rm-sf-dot:hover {
+    transform: scale(1.25);
+}
+
+.rm-sf-new         { background: #8b949e; }
+.rm-sf-indeterminate { background: #0969da; }
+.rm-sf-done        { background: #2da44e; }
+
+.rm-sf-on  { opacity: 1; }
+.rm-sf-off { opacity: 0.22; }
 
 .rm-bar {
     position: absolute;

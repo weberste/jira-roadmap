@@ -18,10 +18,12 @@ var STATUS_COLORS_LIGHT = {
 
 var PIXELS_PER_DAY   = 4;    // overridden at init based on container width
 var LABEL_WIDTH      = 300;
+var STATUS_COL_WIDTH = 120;
 var VIEW_MONTHS      = 11;   // months shown in nav label (1 past + current + 9 future)
 var VISIBLE_MONTHS   = 11;   // months that should fill the visible timeline area
 
-var hideDone = true;
+// Categories that are currently hidden. Default: hide "done" (covers Done + Cancelled).
+var hiddenCategories = { 'done': true };
 var expanded = {};
 
 // State shared between init and nav helpers
@@ -46,7 +48,7 @@ function initRoadmap(data) {
     }
 
     // Scale PIXELS_PER_DAY so that VISIBLE_MONTHS fill the available timeline width
-    var availableWidth = container.clientWidth - LABEL_WIDTH;
+    var availableWidth = container.clientWidth - LABEL_WIDTH - STATUS_COL_WIDTH;
     if (availableWidth > 0) {
         PIXELS_PER_DAY = availableWidth / (VISIBLE_MONTHS * 30.44);
     }
@@ -67,6 +69,12 @@ function initRoadmap(data) {
     //    works against the page, not rm-outer)
     html += '<div class="rm-header">';
     html += '<div class="rm-label-col rm-header-label">Initiative / Epic</div>';
+    html += '<div class="rm-header-status">';
+    html += '<span class="rm-sf-label">Status</span>';
+    html += '<button class="rm-sf-dot rm-sf-new rm-sf-on" data-cat="new" title="To Do \u2013 click to hide"></button>';
+    html += '<button class="rm-sf-dot rm-sf-indeterminate rm-sf-on" data-cat="indeterminate" title="In Progress \u2013 click to hide"></button>';
+    html += '<button class="rm-sf-dot rm-sf-done rm-sf-off" data-cat="done" title="Done \u2013 click to show"></button>';
+    html += '</div>';
     html += '<div class="rm-header-timeline">';
     html += '<div class="rm-months" id="rm-months-inner" style="width:' + totalTimelineWidth + 'px">';
     for (var i = 0; i < months.length; i++) {
@@ -84,19 +92,19 @@ function initRoadmap(data) {
 
     // ── Scrollable body ───────────────────────────────────────────────────────
     html += '<div class="rm-outer" id="rm-outer">';
-    html += '<div class="rm-inner" style="width:' + (LABEL_WIDTH + totalTimelineWidth) + 'px">';
+    html += '<div class="rm-inner" style="width:' + (LABEL_WIDTH + STATUS_COL_WIDTH + totalTimelineWidth) + 'px">';
     html += '<div class="rm-body">';
 
     // Gridlines + today line
     html += '<div class="rm-gridlines">';
     for (var i = 0; i < months.length; i++) {
-        var gLeft = LABEL_WIDTH + Math.floor((months[i] - timelineStart) / 86400000) * PIXELS_PER_DAY;
+        var gLeft = LABEL_WIDTH + STATUS_COL_WIDTH + Math.floor((months[i] - timelineStart) / 86400000) * PIXELS_PER_DAY;
         html += '<div class="rm-gridline" style="left:' + gLeft + 'px"></div>';
     }
     var today = new Date();
     today.setHours(0, 0, 0, 0);
     if (today >= timelineStart && today <= timelineEnd) {
-        var todayLeft = LABEL_WIDTH + Math.floor((today - timelineStart) / 86400000) * PIXELS_PER_DAY;
+        var todayLeft = LABEL_WIDTH + STATUS_COL_WIDTH + Math.floor((today - timelineStart) / 86400000) * PIXELS_PER_DAY;
         html += '<div class="rm-today-line" style="left:' + todayLeft + 'px"></div>';
     }
     html += '</div>'; // rm-gridlines
@@ -105,14 +113,12 @@ function initRoadmap(data) {
     for (var idx = 0; idx < data.initiatives.length; idx++) {
         var init   = data.initiatives[idx];
         var initId = 'rm-init-' + idx;
-        var initDone = init.status_category === 'done';
-
-        html += '<div class="rm-row rm-init-row" data-toggle="' + initId + '" data-done="' + initDone + '">';
+        html += '<div class="rm-row rm-init-row" data-toggle="' + initId + '" data-status-category="' + escAttr(init.status_category) + '">';
         html += '<div class="rm-label-col">';
-        html += '<span class="rm-expand-icon" id="icon-' + initId + '">&#9654;</span> ';
-        html += '<a href="' + escHtml(init.url) + '" target="_blank" class="rm-key">' + escHtml(init.key) + '</a> ';
-        html += '<span class="rm-title">' + escHtml(init.title) + '</span>';
+        html += '<span class="rm-expand-icon" id="icon-' + initId + '">&#9654;</span>';
+        html += '<a href="' + escHtml(init.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(init.title) + '">' + escHtml(init.title) + '</a>';
         html += '</div>';
+        html += '<div class="rm-status-col">' + renderStatusBadge(init.status, init.status_category) + '</div>';
         var doneEpics = 0;
         for (var e = 0; e < init.epics.length; e++) {
             if (init.epics[e].status_category === 'done') doneEpics++;
@@ -126,12 +132,11 @@ function initRoadmap(data) {
 
         for (var j = 0; j < init.epics.length; j++) {
             var epic     = init.epics[j];
-            var epicDone = epic.status_category === 'done';
-            html += '<div class="rm-row rm-epic-row ' + initId + '" data-done="' + epicDone + '" style="display:none">';
+            html += '<div class="rm-row rm-epic-row ' + initId + '" data-status-category="' + escAttr(epic.status_category) + '" style="display:none">';
             html += '<div class="rm-label-col rm-epic-label">';
-            html += '<a href="' + escHtml(epic.url) + '" target="_blank" class="rm-key">' + escHtml(epic.key) + '</a> ';
-            html += '<span class="rm-title">' + escHtml(epic.title) + '</span>';
+            html += '<a href="' + escHtml(epic.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(epic.title) + '">' + escHtml(epic.title) + '</a>';
             html += '</div>';
+            html += '<div class="rm-status-col">' + renderStatusBadge(epic.status, epic.status_category) + '</div>';
             var epicProgressPct = epic.total_stories > 0
                 ? Math.round(epic.done_stories / epic.total_stories * 100)
                 : null;
@@ -186,7 +191,22 @@ function initRoadmap(data) {
         });
     }
 
-    applyDoneFilter(container);
+    // Status category filter buttons
+    var filterBtns = container.querySelectorAll('.rm-sf-dot');
+    for (var i = 0; i < filterBtns.length; i++) {
+        filterBtns[i].addEventListener('click', function() {
+            var cat = this.getAttribute('data-cat');
+            hiddenCategories[cat] = !hiddenCategories[cat];
+            var isHidden = hiddenCategories[cat];
+            this.classList.toggle('rm-sf-on', !isHidden);
+            this.classList.toggle('rm-sf-off', isHidden);
+            var labels = { 'new': 'To Do', 'indeterminate': 'In Progress', 'done': 'Done' };
+            this.title = (labels[cat] || cat) + (isHidden ? ' \u2013 click to show' : ' \u2013 click to hide');
+            applyStatusFilter(container);
+        });
+    }
+
+    applyStatusFilter(container);
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -229,35 +249,34 @@ function updateNavLabelFromScroll() {
     updateNavLabel();
 }
 
-// ── Done / cancelled filter ───────────────────────────────────────────────────
+// ── Status category filter ────────────────────────────────────────────────────
 
 function setEpicRowsVisibility(container, initId) {
     var epicRows = container.querySelectorAll('.' + initId);
     for (var k = 0; k < epicRows.length; k++) {
-        var row    = epicRows[k];
-        var isDone = row.getAttribute('data-done') === 'true';
-        row.style.display = (expanded[initId] && (!hideDone || !isDone)) ? '' : 'none';
+        var row = epicRows[k];
+        var cat = row.getAttribute('data-status-category');
+        row.style.display = (expanded[initId] && !hiddenCategories[cat]) ? '' : 'none';
     }
 }
 
-function applyDoneFilter(container) {
+function applyStatusFilter(container) {
     var initRows = container.querySelectorAll('.rm-init-row');
     for (var i = 0; i < initRows.length; i++) {
         var row    = initRows[i];
-        var isDone = row.getAttribute('data-done') === 'true';
-        if (isDone) row.style.display = hideDone ? 'none' : '';
+        var cat    = row.getAttribute('data-status-category');
+        row.style.display = hiddenCategories[cat] ? 'none' : '';
         var initId = row.getAttribute('data-toggle');
         if (initId) setEpicRowsVisibility(container, initId);
     }
 }
 
-window.toggleDoneItems = function(show) {
-    hideDone = !show;
-    var container = document.getElementById('roadmap-timeline');
-    if (container) applyDoneFilter(container);
-};
-
 // ── Rendering helpers ─────────────────────────────────────────────────────────
+
+function renderStatusBadge(status, statusCategory) {
+    var color = STATUS_COLORS[statusCategory] || STATUS_COLORS['new'];
+    return '<span class="rm-status-badge" style="background:' + color + '" title="' + escAttr(status) + '">' + escHtml(status) + '</span>';
+}
 
 function renderBar(item, timelineStart, progressPct) {
     if (!item.start_date || !item.end_date) {
