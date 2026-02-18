@@ -295,12 +295,21 @@ footer code {
     display: none; /* reserved; controls are now inline in the header */
 }
 
+/* ===== Roadmap Sticky Top ===== */
+/* Wraps the nav bar + column header so both stay visible while scrolling */
+.rm-sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-secondary);
+}
+
 /* ===== Roadmap Nav ===== */
 .rm-nav {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 8px;
+    padding: 8px 0 6px;
 }
 
 .rm-nav-btn {
@@ -339,14 +348,10 @@ footer code {
     position: relative;
 }
 
-/* Sticky header lives outside rm-outer so vertical page-scroll stickiness works */
 .rm-header {
     display: flex;
     border-bottom: 2px solid var(--border-color);
     background: var(--bg-tertiary);
-    position: sticky;
-    top: 0;
-    z-index: 10;
 }
 
 .rm-header-label {

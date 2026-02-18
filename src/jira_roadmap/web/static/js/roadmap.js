@@ -58,15 +58,15 @@ function initRoadmap(data) {
 
     var html = '';
 
-    // ── Nav bar ───────────────────────────────────────────────────────────────
+    // ── Sticky wrapper: nav + column header stick together when scrolling ────────
+    html += '<div class="rm-sticky-top">';
+
     html += '<div class="rm-nav">';
-    html += '<button class="rm-nav-btn" id="rm-nav-prev">&#8249;</button>';
+    html += '<button class="rm-nav-btn" id="rm-nav-prev" type="button">&#8249;</button>';
     html += '<span class="rm-nav-label" id="rm-nav-label"></span>';
-    html += '<button class="rm-nav-btn" id="rm-nav-next">&#8250;</button>';
+    html += '<button class="rm-nav-btn" id="rm-nav-next" type="button">&#8250;</button>';
     html += '</div>';
 
-    // ── Sticky header (outside the scroll container so vertical sticky ────────
-    //    works against the page, not rm-outer)
     html += '<div class="rm-header">';
     html += '<div class="rm-label-col rm-header-label">Initiative / Epic</div>';
     html += '<div class="rm-header-status">';
@@ -89,6 +89,7 @@ function initRoadmap(data) {
     html += '</div>'; // rm-months
     html += '</div>'; // rm-header-timeline
     html += '</div>'; // rm-header
+    html += '</div>'; // rm-sticky-top
 
     // ── Scrollable body ───────────────────────────────────────────────────────
     html += '<div class="rm-outer" id="rm-outer">';
