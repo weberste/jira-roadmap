@@ -195,6 +195,28 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
         for epic in raw_epics:
             epic_data[epic["key"]] = epic
 
+    # Fetch child stories/tasks for each epic via the parent field.
+    # (The subtasks field only captures JIRA Sub-task type issues, not Stories.)
+    story_counts: dict[str, dict] = {}
+    if epic_keys_set:
+        stories_jql = "parent in (" + ", ".join(sorted(epic_keys_set)) + ")"
+        try:
+            raw_stories = client.search_roadmap_issues(stories_jql, date_fields=[])
+        except (AuthenticationError, RateLimitError, JiraClientConnectionError, ValueError):
+            raw_stories = []
+
+        for story in raw_stories:
+            parent_key = story.get("fields", {}).get("parent", {}).get("key", "")
+            if not parent_key or parent_key not in epic_keys_set:
+                continue
+            counts = story_counts.setdefault(parent_key, {"done": 0, "inprogress": 0, "total": 0})
+            counts["total"] += 1
+            cat = _get_status_category(story.get("fields", {}).get("status", {}))
+            if cat == "done":
+                counts["done"] += 1
+            elif cat == "indeterminate":
+                counts["inprogress"] += 1
+
     # Build RoadmapInitiative objects
     initiatives: list[RoadmapInitiative] = []
     all_dates: list[date] = []
@@ -215,18 +237,10 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
             epic_start = _parse_date_field(epic_fields, start_field)
             epic_end = _parse_date_field(epic_fields, end_field)
 
-            # Count child stories/tasks from JIRA parent-child hierarchy
-            done_stories = 0
-            inprogress_stories = 0
-            total_stories = 0
-            for subtask in epic_fields.get("subtasks", []):
-                subtask_status = subtask.get("fields", {}).get("status", {})
-                total_stories += 1
-                cat = _get_status_category(subtask_status)
-                if cat == "done":
-                    done_stories += 1
-                elif cat == "indeterminate":
-                    inprogress_stories += 1
+            counts = story_counts.get(epic_key, {})
+            done_stories = counts.get("done", 0)
+            inprogress_stories = counts.get("inprogress", 0)
+            total_stories = counts.get("total", 0)
 
             epic = RoadmapEpic(
                 key=epic_key,
