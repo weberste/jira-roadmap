@@ -9,12 +9,6 @@ var STATUS_COLORS = {
     'done': '#2da44e'           // green (Done)
 };
 
-// Light tints of each status color, used for the "not yet done" portion of the progress bar
-var STATUS_COLORS_LIGHT = {
-    'new': '#d0d7de',
-    'indeterminate': '#cce0ff',
-    'done': '#aceebb'
-};
 
 var PIXELS_PER_DAY   = 4;    // overridden at init based on container width
 var LABEL_WIDTH      = 300;
@@ -22,9 +16,9 @@ var STATUS_COL_WIDTH = 120;
 var VIEW_MONTHS      = 11;   // months shown in nav label (1 past + current + 9 future)
 var VISIBLE_MONTHS   = 11;   // months that should fill the visible timeline area
 
-// Status categories hidden per row type. Default: hide "done" (Done + Cancelled).
-var hiddenInitCategories = { 'done': true };
-var hiddenEpicCategories = { 'done': true };
+// Status categories hidden per row type. Default: show all.
+var hiddenInitCategories = {};
+var hiddenEpicCategories = {};
 var expanded = {};
 
 // State shared between init and nav helpers
@@ -71,7 +65,7 @@ function initRoadmap(data) {
     html += '<div class="rm-filter-dropdown" style="display:none">';
     html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#8b949e"></span><input type="checkbox" value="new" checked> To Do</label>';
     html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#0969da"></span><input type="checkbox" value="indeterminate" checked> In Progress</label>';
-    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#2da44e"></span><input type="checkbox" value="done"> Done</label>';
+    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#2da44e"></span><input type="checkbox" value="done" checked> Done</label>';
     html += '</div>';
     html += '</div>';
     html += '<div class="rm-filter-group" data-filter-type="epic">';
@@ -79,7 +73,7 @@ function initRoadmap(data) {
     html += '<div class="rm-filter-dropdown" style="display:none">';
     html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#8b949e"></span><input type="checkbox" value="new" checked> To Do</label>';
     html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#0969da"></span><input type="checkbox" value="indeterminate" checked> In Progress</label>';
-    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#2da44e"></span><input type="checkbox" value="done"> Done</label>';
+    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#2da44e"></span><input type="checkbox" value="done" checked> Done</label>';
     html += '</div>';
     html += '</div>';
     html += '</div>';
@@ -132,14 +126,20 @@ function initRoadmap(data) {
         html += '<a href="' + escHtml(init.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(init.title) + '">' + escHtml(init.title) + '</a>';
         html += '</div>';
         html += '<div class="rm-status-col">' + renderStatusBadge(init.status, init.status_category) + '</div>';
-        var doneEpics = 0;
+        var doneEpics = 0, inprogressEpics = 0;
         for (var e = 0; e < init.epics.length; e++) {
-            if (init.epics[e].status_category === 'done') doneEpics++;
+            var esc = init.epics[e].status_category;
+            if (esc === 'done') doneEpics++;
+            else if (esc === 'indeterminate') inprogressEpics++;
         }
-        var progressPct = init.epics.length > 0 ? Math.round(doneEpics / init.epics.length * 100) : null;
+        var initChildren = init.epics.length > 0
+            ? { done: doneEpics, inprogress: inprogressEpics,
+                todo: init.epics.length - doneEpics - inprogressEpics,
+                total: init.epics.length, label: 'Epics' }
+            : null;
 
         html += '<div class="rm-timeline-col" style="width:' + totalTimelineWidth + 'px">';
-        html += renderBar(init, timelineStart, progressPct);
+        html += renderBar(init, timelineStart, initChildren);
         html += '</div>';
         html += '</div>';
 
@@ -150,12 +150,15 @@ function initRoadmap(data) {
             html += '<a href="' + escHtml(epic.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(epic.title) + '">' + escHtml(epic.title) + '</a>';
             html += '</div>';
             html += '<div class="rm-status-col">' + renderStatusBadge(epic.status, epic.status_category) + '</div>';
-            var epicProgressPct = epic.total_stories > 0
-                ? Math.round(epic.done_stories / epic.total_stories * 100)
+            var epicInprogress = epic.inprogress_stories || 0;
+            var epicChildren = epic.total_stories > 0
+                ? { done: epic.done_stories, inprogress: epicInprogress,
+                    todo: Math.max(0, epic.total_stories - epic.done_stories - epicInprogress),
+                    total: epic.total_stories, label: 'Stories' }
                 : null;
 
             html += '<div class="rm-timeline-col" style="width:' + totalTimelineWidth + 'px">';
-            html += renderBar(epic, timelineStart, epicProgressPct);
+            html += renderBar(epic, timelineStart, epicChildren);
             html += '</div>';
             html += '</div>';
         }
@@ -314,7 +317,7 @@ function renderStatusBadge(status, statusCategory) {
     return '<span class="rm-status-badge" style="background:' + color + '" title="' + escAttr(status) + '">' + escHtml(status) + '</span>';
 }
 
-function renderBar(item, timelineStart, progressPct) {
+function renderBar(item, timelineStart, children) {
     if (!item.start_date || !item.end_date) {
         return '<div class="rm-no-dates">No dates</div>';
     }
@@ -322,20 +325,31 @@ function renderBar(item, timelineStart, progressPct) {
     var end   = new Date(item.end_date   + 'T00:00:00');
     var left  = Math.floor((start - timelineStart) / 86400000) * PIXELS_PER_DAY;
     var width = Math.max(Math.floor((end - start) / 86400000) * PIXELS_PER_DAY, 4);
-    var color = STATUS_COLORS[item.status_category] || STATUS_COLORS['new'];
 
     var bg;
-    if (progressPct !== null && progressPct !== undefined && progressPct > 0 && progressPct < 100) {
-        var light = STATUS_COLORS_LIGHT[item.status_category] || STATUS_COLORS_LIGHT['new'];
-        bg = 'linear-gradient(to right, ' + color + ' ' + progressPct + '%, ' + light + ' ' + progressPct + '%)';
+    if (children && children.total > 0) {
+        var donePct = Math.round(children.done      / children.total * 100);
+        var inpPct  = Math.round(children.inprogress / children.total * 100);
+        if (donePct + inpPct > 100) inpPct = 100 - donePct;
+        var midPct  = donePct + inpPct;
+        bg = 'linear-gradient(to right,' +
+            '#2da44e 0%,#2da44e ' + donePct + '%,' +
+            '#0969da ' + donePct + '%,#0969da ' + midPct + '%,' +
+            '#8b949e ' + midPct  + '%,#8b949e 100%)';
     } else {
-        bg = color;
+        bg = STATUS_COLORS[item.status_category] || STATUS_COLORS['new'];
     }
 
     var tooltip = item.key + ': ' + item.title +
         '\nStatus: ' + item.status +
         '\nStart: '  + item.start_date +
         '\nEnd: '    + item.end_date;
+    if (children && children.total > 0) {
+        tooltip += '\n' + children.label + ': ' +
+            children.done + ' done, ' +
+            children.inprogress + ' in progress, ' +
+            children.todo + ' to do';
+    }
 
     return '<div class="rm-bar" style="left:' + left + 'px;width:' + width +
         'px;background:' + bg + '" title="' + escAttr(tooltip) + '"></div>';
