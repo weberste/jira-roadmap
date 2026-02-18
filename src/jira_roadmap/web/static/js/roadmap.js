@@ -16,9 +16,10 @@ var STATUS_COLORS_LIGHT = {
     'done': '#aceebb'
 };
 
-var PIXELS_PER_DAY = 4;
-var LABEL_WIDTH    = 300;
-var VIEW_MONTHS    = 12;  // used for the nav label range display
+var PIXELS_PER_DAY   = 4;    // overridden at init based on container width
+var LABEL_WIDTH      = 300;
+var VIEW_MONTHS      = 11;   // months shown in nav label (1 past + current + 9 future)
+var VISIBLE_MONTHS   = 11;   // months that should fill the visible timeline area
 
 var hideDone = true;
 var expanded = {};
@@ -42,6 +43,12 @@ function initRoadmap(data) {
     while (cursor <= timelineEnd) {
         months.push(new Date(cursor));
         cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    // Scale PIXELS_PER_DAY so that VISIBLE_MONTHS fill the available timeline width
+    var availableWidth = container.clientWidth - LABEL_WIDTH;
+    if (availableWidth > 0) {
+        PIXELS_PER_DAY = availableWidth / (VISIBLE_MONTHS * 30.44);
     }
 
     var totalDays          = Math.ceil((timelineEnd - timelineStart) / 86400000);
