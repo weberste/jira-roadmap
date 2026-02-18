@@ -475,7 +475,9 @@ footer code {
 }
 
 .rm-row:hover .rm-label-col {
-    background: var(--accent-light);
+    /* Solid equivalent of rgba(9,105,218,0.1) over #ffffff — keeps the label
+       column opaque so bars extending behind it don't bleed through on hover */
+    background: #e6f0fb;
 }
 
 .rm-init-row {
