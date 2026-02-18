@@ -302,11 +302,16 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
             if epic_end:
                 all_dates.append(epic_end)
 
-        # Derive initiative dates from epics
+        # Derive initiative dates from epics.
+        # If any epic is missing a start or end date we treat that boundary as
+        # unknown for the initiative too — we can't claim a definite start when
+        # some epics haven't been scheduled yet.
         epic_starts = [e.start_date for e in epics if e.start_date]
         epic_ends = [e.end_date for e in epics if e.end_date]
-        init_start = min(epic_starts) if epic_starts else None
-        init_end = max(epic_ends) if epic_ends else None
+        all_have_start = epics and all(e.start_date for e in epics)
+        all_have_end = epics and all(e.end_date for e in epics)
+        init_start = min(epic_starts) if all_have_start else None
+        init_end = max(epic_ends) if all_have_end else None
 
         if init_start:
             all_dates.append(init_start)

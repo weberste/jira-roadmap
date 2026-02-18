@@ -469,6 +469,54 @@ class TestFetchRoadmap:
             assert d_epic["end_date"] is None
 
 
+    @patch("jira_roadmap.roadmap.JiraClient")
+    @patch("jira_roadmap.roadmap.load_config")
+    @patch("jira_roadmap.roadmap.config_exists", return_value=True)
+    def test_initiative_has_no_dates_when_any_epic_lacks_dates(
+        self, mock_exists, mock_load, mock_jira_cls
+    ):
+        """If any epic is missing a start or end date, the initiative boundary
+        on that side must be None — we can't claim a definite range when some
+        epics are unscheduled.
+        """
+        mock_load.return_value = _make_config()
+        mock_client = MagicMock()
+
+        initiative = _make_initiative_issue(
+            "INIT-1", "Mixed Initiative", ["EPIC-1", "EPIC-2", "EPIC-3"]
+        )
+        initiative["fields"]["status"] = {
+            "name": "In Progress",
+            "statusCategory": {"key": "indeterminate", "name": "In Progress"},
+        }
+
+        epics = [
+            _make_epic_issue("EPIC-1", "Dated Epic",     "2026-01-01", "2026-06-30"),
+            _make_epic_issue("EPIC-2", "No-end Epic",    "2026-03-01", None),
+            _make_inprogress_epic_issue("EPIC-3", "Fully Undated Epic"),
+        ]
+
+        def search_side_effect(jql, **kwargs):
+            if "Initiative" in jql:
+                return [initiative]
+            if "parent in" in jql and "INIT" in jql:
+                return []
+            if "key in" in jql:
+                return epics
+            return []
+
+        mock_client.search_roadmap_issues.side_effect = search_side_effect
+        mock_jira_cls.return_value = mock_client
+
+        result = fetch_roadmap("type = Initiative")
+        init = result.initiatives[0]
+
+        # EPIC-2 has no end, EPIC-3 has no start or end — initiative must
+        # expose None on both sides.
+        assert init.start_date is None, "start must be None because EPIC-3 has no start"
+        assert init.end_date is None, "end must be None because EPIC-2 and EPIC-3 have no end"
+
+
 class TestRoadmapResultToDict:
     """Tests for roadmap_result_to_dict serializer."""
 
