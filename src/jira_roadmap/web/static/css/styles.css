@@ -637,6 +637,21 @@ footer code {
     flex-shrink: 0;
 }
 
+.rm-filter-section-header {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    padding: 4px 8px 2px;
+}
+
+.rm-filter-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
+}
+
 .rm-bar {
     position: absolute;
     top: 6px;

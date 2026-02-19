@@ -20,6 +20,9 @@ var VISIBLE_MONTHS   = 11;   // months that should fill the visible timeline are
 // Status categories hidden per row type. Default: hide cancelled only.
 var hiddenInitCategories = { 'cancelled': true };
 var hiddenEpicCategories = { 'cancelled': true };
+// Project keys hidden per row type. Empty = all visible (default).
+var hiddenInitProjects = {};
+var hiddenEpicProjects = {};
 var expanded = {};
 
 // State shared between init and nav helpers
@@ -30,10 +33,39 @@ var rmTotalTimelineWidth = 0;     // total pixel width of the timeline area
 var rmRedrawArrows       = null;  // function to redraw dependency arrows; set during init
 var rmShowDeps           = false; // dependency arrows hidden by default
 
+function buildFilterDropdownHtml(projects) {
+    var h = '';
+    h += '<div class="rm-filter-section-header">Status</div>';
+    h += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#8b949e"></span><input type="checkbox" data-filter="status" value="new" checked> To Do</label>';
+    h += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#0969da"></span><input type="checkbox" data-filter="status" value="indeterminate" checked> In Progress</label>';
+    h += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#2da44e"></span><input type="checkbox" data-filter="status" value="done" checked> Done</label>';
+    h += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#9e3e3e"></span><input type="checkbox" data-filter="status" value="cancelled"> Cancelled</label>';
+    if (projects.length > 0) {
+        h += '<div class="rm-filter-divider"></div>';
+        h += '<div class="rm-filter-section-header">Project</div>';
+        for (var i = 0; i < projects.length; i++) {
+            h += '<label class="rm-filter-opt"><input type="checkbox" data-filter="project" value="' + escAttr(projects[i]) + '" checked> ' + escHtml(projects[i]) + '</label>';
+        }
+    }
+    return h;
+}
+
 function initRoadmap(data) {
     var container = document.getElementById('roadmap-timeline');
     if (!container || !data || !data.initiatives.length) return;
     rmShowDeps = false;
+
+    // Collect unique project keys (prefix before the first '-' in each key)
+    var initProjectsSet = {}, epicProjectsSet = {};
+    for (var pi = 0; pi < data.initiatives.length; pi++) {
+        var pInit = data.initiatives[pi];
+        initProjectsSet[pInit.key.split('-')[0]] = true;
+        for (var pe = 0; pe < pInit.epics.length; pe++) {
+            epicProjectsSet[pInit.epics[pe].key.split('-')[0]] = true;
+        }
+    }
+    var initProjects = Object.keys(initProjectsSet).sort();
+    var epicProjects = Object.keys(epicProjectsSet).sort();
 
     var timelineStart = new Date(data.timeline_start + 'T00:00:00');
     var timelineEnd   = new Date(data.timeline_end   + 'T00:00:00');
@@ -69,21 +101,11 @@ function initRoadmap(data) {
     html += '<button class="rm-nav-btn" id="rm-nav-next" type="button">&#8250;</button>';
     html += '<div class="rm-filter-group" data-filter-type="initiative">';
     html += '<button type="button" class="rm-filter-btn">Initiatives &#9662;</button>';
-    html += '<div class="rm-filter-dropdown" style="display:none">';
-    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#8b949e"></span><input type="checkbox" value="new" checked> To Do</label>';
-    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#0969da"></span><input type="checkbox" value="indeterminate" checked> In Progress</label>';
-    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#2da44e"></span><input type="checkbox" value="done" checked> Done</label>';
-    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#9e3e3e"></span><input type="checkbox" value="cancelled"> Cancelled</label>';
-    html += '</div>';
+    html += '<div class="rm-filter-dropdown" style="display:none">' + buildFilterDropdownHtml(initProjects) + '</div>';
     html += '</div>';
     html += '<div class="rm-filter-group" data-filter-type="epic">';
     html += '<button type="button" class="rm-filter-btn">Epics &#9662;</button>';
-    html += '<div class="rm-filter-dropdown" style="display:none">';
-    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#8b949e"></span><input type="checkbox" value="new" checked> To Do</label>';
-    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#0969da"></span><input type="checkbox" value="indeterminate" checked> In Progress</label>';
-    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#2da44e"></span><input type="checkbox" value="done" checked> Done</label>';
-    html += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#9e3e3e"></span><input type="checkbox" value="cancelled"> Cancelled</label>';
-    html += '</div>';
+    html += '<div class="rm-filter-dropdown" style="display:none">' + buildFilterDropdownHtml(epicProjects) + '</div>';
     html += '</div>';
     html += '<button type="button" class="rm-filter-btn rm-deps-toggle" id="rm-deps-toggle">Dependencies</button>';
     html += '</div>';
@@ -130,7 +152,7 @@ function initRoadmap(data) {
     for (var idx = 0; idx < data.initiatives.length; idx++) {
         var init   = data.initiatives[idx];
         var initId = 'rm-init-' + idx;
-        html += '<div class="rm-row rm-init-row" data-toggle="' + initId + '" data-status-category="' + escAttr(init.status_category) + '" data-item-key="' + escAttr(init.key) + '">';
+        html += '<div class="rm-row rm-init-row" data-toggle="' + initId + '" data-status-category="' + escAttr(init.status_category) + '" data-item-key="' + escAttr(init.key) + '" data-project="' + escAttr(init.key.split('-')[0]) + '">';
         html += '<div class="rm-label-col">';
         html += '<span class="rm-expand-icon" id="icon-' + initId + '">&#9654;</span>';
         html += '<a href="' + escHtml(init.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(init.title) + '">' + escHtml(init.title) + '</a>';
@@ -156,7 +178,7 @@ function initRoadmap(data) {
 
         for (var j = 0; j < init.epics.length; j++) {
             var epic     = init.epics[j];
-            html += '<div class="rm-row rm-epic-row ' + initId + '" data-status-category="' + escAttr(epic.status_category) + '" data-item-key="' + escAttr(epic.key) + '" style="display:none">';
+            html += '<div class="rm-row rm-epic-row ' + initId + '" data-status-category="' + escAttr(epic.status_category) + '" data-item-key="' + escAttr(epic.key) + '" data-project="' + escAttr(epic.key.split('-')[0]) + '" style="display:none">';
             html += '<div class="rm-label-col rm-epic-label">';
             html += '<a href="' + escHtml(epic.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(epic.title) + '">' + escHtml(epic.title) + '</a>';
             html += '</div>';
@@ -307,12 +329,21 @@ function initRoadmap(data) {
             var checkboxes = group.querySelectorAll('input[type="checkbox"]');
             for (var j = 0; j < checkboxes.length; j++) {
                 checkboxes[j].addEventListener('change', function() {
-                    if (isInit) {
-                        hiddenInitCategories[this.value] = !this.checked;
+                    var filterKind = this.getAttribute('data-filter');
+                    if (filterKind === 'project') {
+                        if (isInit) {
+                            hiddenInitProjects[this.value] = !this.checked;
+                        } else {
+                            hiddenEpicProjects[this.value] = !this.checked;
+                        }
                     } else {
-                        hiddenEpicCategories[this.value] = !this.checked;
+                        if (isInit) {
+                            hiddenInitCategories[this.value] = !this.checked;
+                        } else {
+                            hiddenEpicCategories[this.value] = !this.checked;
+                        }
                     }
-                    applyStatusFilter(container);
+                    applyFilters(container);
                 });
             }
         })(filterGroups[i]);
@@ -324,7 +355,7 @@ function initRoadmap(data) {
         for (var j = 0; j < allDDs.length; j++) allDDs[j].style.display = 'none';
     });
 
-    applyStatusFilter(container);  // also calls rmRedrawArrows via its own tail-call
+    applyFilters(container);  // also calls rmRedrawArrows via its own tail-call
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -372,18 +403,20 @@ function updateNavLabelFromScroll() {
 function setEpicRowsVisibility(container, initId) {
     var epicRows = container.querySelectorAll('.' + initId);
     for (var k = 0; k < epicRows.length; k++) {
-        var row = epicRows[k];
-        var cat = row.getAttribute('data-status-category');
-        row.style.display = (expanded[initId] && !hiddenEpicCategories[cat]) ? '' : 'none';
+        var row  = epicRows[k];
+        var cat  = row.getAttribute('data-status-category');
+        var proj = row.getAttribute('data-project');
+        row.style.display = (expanded[initId] && !hiddenEpicCategories[cat] && !hiddenEpicProjects[proj]) ? '' : 'none';
     }
 }
 
-function applyStatusFilter(container) {
+function applyFilters(container) {
     var initRows = container.querySelectorAll('.rm-init-row');
     for (var i = 0; i < initRows.length; i++) {
         var row    = initRows[i];
         var cat    = row.getAttribute('data-status-category');
-        row.style.display = hiddenInitCategories[cat] ? 'none' : '';
+        var proj   = row.getAttribute('data-project');
+        row.style.display = (hiddenInitCategories[cat] || hiddenInitProjects[proj]) ? 'none' : '';
         var initId = row.getAttribute('data-toggle');
         if (initId) setEpicRowsVisibility(container, initId);
     }
