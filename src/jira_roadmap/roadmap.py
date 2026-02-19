@@ -350,6 +350,14 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
     timeline_start = (timeline_start.replace(day=1) - timedelta(days=1)).replace(day=1)
     timeline_end = (timeline_end.replace(day=28) + timedelta(days=5)).replace(day=1)
 
+    # Collect unique project keys from all initiatives and epics, then resolve names
+    all_project_keys: set[str] = set()
+    for init in initiatives:
+        all_project_keys.add(init.key.split("-")[0])
+        for epic in init.epics:
+            all_project_keys.add(epic.key.split("-")[0])
+    project_names = client.get_project_names(sorted(all_project_keys))
+
     return RoadmapResult(
         initiatives=initiatives,
         jql_query=jql,
@@ -358,6 +366,7 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
         jira_url=jira_url,
         initiative_deps=initiative_deps,
         epic_deps=epic_deps,
+        project_names=project_names,
     )
 
 
@@ -403,4 +412,5 @@ def roadmap_result_to_dict(result: RoadmapResult) -> dict:
         "jira_url": result.jira_url,
         "initiative_deps": [[a, b] for a, b in result.initiative_deps],
         "epic_deps": [[a, b] for a, b in result.epic_deps],
+        "project_names": result.project_names,
     }

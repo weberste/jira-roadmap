@@ -46,3 +46,4 @@ class RoadmapResult:
     jira_url: str
     initiative_deps: list[tuple[str, str]] = field(default_factory=list)  # (from_key, to_key)
     epic_deps: list[tuple[str, str]] = field(default_factory=list)        # (from_key, to_key)
+    project_names: dict[str, str] = field(default_factory=dict)           # project_key → name

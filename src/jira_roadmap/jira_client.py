@@ -111,6 +111,23 @@ class JiraClient:
                 raise ValueError(f"Invalid JQL query: {e.text}") from e
             raise
 
+    def get_project_names(self, project_keys: list[str]) -> dict[str, str]:
+        """Fetch human-readable project names for a list of project keys.
+
+        Returns:
+            Dict mapping project key → project name. Falls back to the key
+            itself if a project cannot be fetched.
+        """
+        client = self._get_client()
+        result: dict[str, str] = {}
+        for key in project_keys:
+            try:
+                project = client.project(key)
+                result[key] = project.name
+            except Exception:
+                result[key] = key  # graceful fallback
+        return result
+
     def list_link_types(self) -> list[str]:
         """Get available issue link type names from JIRA.
 

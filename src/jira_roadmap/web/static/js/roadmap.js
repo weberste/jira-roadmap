@@ -33,7 +33,8 @@ var rmTotalTimelineWidth = 0;     // total pixel width of the timeline area
 var rmRedrawArrows       = null;  // function to redraw dependency arrows; set during init
 var rmShowDeps           = false; // dependency arrows hidden by default
 
-function buildFilterDropdownHtml(projects) {
+function buildFilterDropdownHtml(projects, projectNames) {
+    var names = projectNames || {};
     var h = '';
     h += '<div class="rm-filter-section-header">Status</div>';
     h += '<label class="rm-filter-opt"><span class="rm-filter-dot" style="background:#8b949e"></span><input type="checkbox" data-filter="status" value="new" checked> To Do</label>';
@@ -44,7 +45,9 @@ function buildFilterDropdownHtml(projects) {
         h += '<div class="rm-filter-divider"></div>';
         h += '<div class="rm-filter-section-header">Project</div>';
         for (var i = 0; i < projects.length; i++) {
-            h += '<label class="rm-filter-opt"><input type="checkbox" data-filter="project" value="' + escAttr(projects[i]) + '" checked> ' + escHtml(projects[i]) + '</label>';
+            var key   = projects[i];
+            var label = names[key] || key;
+            h += '<label class="rm-filter-opt"><input type="checkbox" data-filter="project" value="' + escAttr(key) + '" checked> ' + escHtml(label) + '</label>';
         }
     }
     return h;
@@ -99,13 +102,14 @@ function initRoadmap(data) {
     html += '<button class="rm-nav-btn" id="rm-nav-prev" type="button">&#8249;</button>';
     html += '<span class="rm-nav-label" id="rm-nav-label"></span>';
     html += '<button class="rm-nav-btn" id="rm-nav-next" type="button">&#8250;</button>';
+    var projectNames = data.project_names || {};
     html += '<div class="rm-filter-group" data-filter-type="initiative">';
     html += '<button type="button" class="rm-filter-btn">Initiatives &#9662;</button>';
-    html += '<div class="rm-filter-dropdown" style="display:none">' + buildFilterDropdownHtml(initProjects) + '</div>';
+    html += '<div class="rm-filter-dropdown" style="display:none">' + buildFilterDropdownHtml(initProjects, projectNames) + '</div>';
     html += '</div>';
     html += '<div class="rm-filter-group" data-filter-type="epic">';
     html += '<button type="button" class="rm-filter-btn">Epics &#9662;</button>';
-    html += '<div class="rm-filter-dropdown" style="display:none">' + buildFilterDropdownHtml(epicProjects) + '</div>';
+    html += '<div class="rm-filter-dropdown" style="display:none">' + buildFilterDropdownHtml(epicProjects, projectNames) + '</div>';
     html += '</div>';
     html += '<button type="button" class="rm-filter-btn rm-deps-toggle" id="rm-deps-toggle">Dependencies</button>';
     html += '</div>';
