@@ -203,6 +203,7 @@ class TestFetchRoadmap:
             return epics
 
         mock_client.search_roadmap_issues.side_effect = search_side_effect
+        mock_client.get_project_names.return_value = {}
         mock_jira_cls.return_value = mock_client
 
         result = fetch_roadmap("type = Initiative")
@@ -260,6 +261,7 @@ class TestFetchRoadmap:
             return [epic1]
 
         mock_client.search_roadmap_issues.side_effect = search_side_effect
+        mock_client.get_project_names.return_value = {}
         mock_jira_cls.return_value = mock_client
 
         result = fetch_roadmap("type = Initiative", link_types=["Relates"])
@@ -317,6 +319,7 @@ class TestFetchRoadmap:
             return [epic1, epic2]
 
         mock_client.search_roadmap_issues.side_effect = search_side_effect
+        mock_client.get_project_names.return_value = {}
         mock_jira_cls.return_value = mock_client
 
         result = fetch_roadmap("type = Initiative")
@@ -378,6 +381,7 @@ class TestFetchRoadmap:
             return [epic_detail]
 
         mock_client.search_roadmap_issues.side_effect = search_side_effect
+        mock_client.get_project_names.return_value = {}
         mock_jira_cls.return_value = mock_client
 
         result = fetch_roadmap("type = Initiative")
@@ -398,6 +402,7 @@ class TestFetchRoadmap:
         initiatives = [_make_initiative_issue("INIT-1", "Lonely Initiative", [])]
 
         mock_client.search_roadmap_issues.return_value = initiatives
+        mock_client.get_project_names.return_value = {}
         mock_jira_cls.return_value = mock_client
 
         result = fetch_roadmap("type = Initiative")
@@ -442,6 +447,7 @@ class TestFetchRoadmap:
             return []  # no stories
 
         mock_client.search_roadmap_issues.side_effect = search_side_effect
+        mock_client.get_project_names.return_value = {}
         mock_jira_cls.return_value = mock_client
 
         result = fetch_roadmap("type = Initiative")
@@ -506,6 +512,7 @@ class TestFetchRoadmap:
             return []
 
         mock_client.search_roadmap_issues.side_effect = search_side_effect
+        mock_client.get_project_names.return_value = {}
         mock_jira_cls.return_value = mock_client
 
         result = fetch_roadmap("type = Initiative")

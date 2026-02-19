@@ -72,9 +72,13 @@ uv run flask --app jira_roadmap.web.app run --host 0.0.0.0 --port 8080
 2. Optionally filter by link type (comma-separated)
 3. Click **Load Roadmap**
 4. Click an initiative row to expand/collapse its linked epics
+5. Use the **Initiatives** and **Epics** dropdowns to filter by status category or project
+6. Use the **Dependencies** button to show/hide dependency arrows between items
+
+A built-in demo with no JIRA credentials is available at http://127.0.0.1:5000/demo.
 
 ## Running tests
 
 ```bash
-uv run --with pytest pytest tests/ -v
+uv run pytest tests/ -v
 ```

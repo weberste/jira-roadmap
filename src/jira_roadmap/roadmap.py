@@ -150,7 +150,6 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
             outward = link.get("outwardIssue")
             if outward:
                 other_key = outward.get("key", "")
-                other_type = outward.get("fields", {}).get("issuetype", {}).get("name", "")
                 if other_key and other_key in initiative_keys_set and other_key != issue_key:
                     pair = (issue_key, other_key)
                     if pair not in seen_init_deps:

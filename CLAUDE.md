@@ -43,9 +43,9 @@ The app fetches JIRA initiatives via JQL and renders them as an interactive time
 
 **Key modules:**
 - `src/jira_roadmap/roadmap.py` — core business logic: fetches initiatives, resolves linked epics, derives dates
-- `src/jira_roadmap/jira_client.py` — JIRA API wrapper with tenacity retry/backoff
+- `src/jira_roadmap/jira_client.py` — JIRA API wrapper with tenacity retry/backoff; exposes `search_roadmap_issues()`, `list_link_types()`, `get_project_names()`
 - `src/jira_roadmap/config.py` — loads and validates `~/.jira-roadmap/config.toml`
-- `src/jira_roadmap/web/routes.py` — Flask route handlers (`GET/POST /`, `/api/link-types`, `/health`)
+- `src/jira_roadmap/web/routes.py` — Flask route handlers (`GET/POST /`, `/demo`, `/api/link-types`, `/health`)
 - `src/jira_roadmap/web/static/js/roadmap.js` — pure JS timeline rendering (no external libraries)
 
 **Config file** (`~/.jira-roadmap/config.toml`) stores JIRA credentials and custom field IDs for start/end dates. The `RoadmapConfigError` exception is raised when date fields aren't configured.
