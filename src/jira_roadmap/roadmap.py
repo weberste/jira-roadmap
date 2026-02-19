@@ -339,11 +339,11 @@ def fetch_roadmap(jql: str, link_types: list[str] | None = None) -> RoadmapResul
         timeline_start = today.replace(month=1, day=1)
         timeline_end = today.replace(month=12, day=31)
 
-    # Ensure the timeline always extends at least 9 months into the future
-    future_month = today.month + 9
-    nine_months_out = date(today.year + (future_month - 1) // 12, (future_month - 1) % 12 + 1, 1)
-    if timeline_end < nine_months_out:
-        timeline_end = nine_months_out
+    # Ensure the timeline always extends at least 11 months into the future
+    future_month = today.month + 11
+    eleven_months_out = date(today.year + (future_month - 1) // 12, (future_month - 1) % 12 + 1, 1)
+    if timeline_end < eleven_months_out:
+        timeline_end = eleven_months_out
 
     # Add padding: 1 month before and after
     timeline_start = (timeline_start.replace(day=1) - timedelta(days=1)).replace(day=1)

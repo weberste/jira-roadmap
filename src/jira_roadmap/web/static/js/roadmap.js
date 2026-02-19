@@ -11,11 +11,12 @@ var STATUS_COLORS = {
 };
 
 
-var PIXELS_PER_DAY   = 4;    // overridden at init based on container width
-var LABEL_WIDTH      = 300;
-var STATUS_COL_WIDTH = 120;
-var VIEW_MONTHS      = 11;   // months shown in nav label (1 past + current + 9 future)
-var VISIBLE_MONTHS   = 11;   // months that should fill the visible timeline area
+var PIXELS_PER_DAY    = 4;    // overridden at init based on container width
+var PROJECT_COL_WIDTH = 120;
+var LABEL_WIDTH       = 300;
+var STATUS_COL_WIDTH  = 120;
+var VIEW_MONTHS       = 13;   // months shown in nav label (1 past + current + 11 future)
+var VISIBLE_MONTHS    = 13;   // months that should fill the visible timeline area
 
 // Status categories hidden per row type. Default: hide cancelled only.
 var hiddenInitCategories = { 'cancelled': true };
@@ -30,6 +31,7 @@ var rmOuter              = null;
 var rmTimelineStart      = null;
 var rmViewStart          = null;  // first-of-month date at the left edge of the visible window
 var rmTotalTimelineWidth = 0;     // total pixel width of the timeline area
+var rmNoDateLeft         = 0;     // left px for bars with no start date
 var rmRedrawArrows       = null;  // function to redraw dependency arrows; set during init
 var rmShowDeps           = false; // dependency arrows hidden by default
 
@@ -58,6 +60,9 @@ function initRoadmap(data) {
     if (!container || !data || !data.initiatives.length) return;
     rmShowDeps = false;
 
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     // Collect unique project keys (prefix before the first '-' in each key)
     var initProjectsSet = {}, epicProjectsSet = {};
     for (var pi = 0; pi < data.initiatives.length; pi++) {
@@ -69,6 +74,14 @@ function initRoadmap(data) {
     }
     var initProjects = Object.keys(initProjectsSet).sort();
     var epicProjects = Object.keys(epicProjectsSet).sort();
+
+    // Sort initiatives by start date ascending; nulls last
+    data.initiatives.sort(function(a, b) {
+        if (!a.start_date && !b.start_date) return 0;
+        if (!a.start_date) return 1;
+        if (!b.start_date) return -1;
+        return a.start_date < b.start_date ? -1 : a.start_date > b.start_date ? 1 : 0;
+    });
 
     var timelineStart = new Date(data.timeline_start + 'T00:00:00');
     var timelineEnd   = new Date(data.timeline_end   + 'T00:00:00');
@@ -83,7 +96,7 @@ function initRoadmap(data) {
     }
 
     // Scale PIXELS_PER_DAY so that VISIBLE_MONTHS fill the available timeline width
-    var availableWidth = container.clientWidth - LABEL_WIDTH - STATUS_COL_WIDTH;
+    var availableWidth = container.clientWidth - PROJECT_COL_WIDTH - LABEL_WIDTH - STATUS_COL_WIDTH;
     if (availableWidth > 0) {
         PIXELS_PER_DAY = availableWidth / (VISIBLE_MONTHS * 30.44);
     }
@@ -92,6 +105,28 @@ function initRoadmap(data) {
     var totalTimelineWidth = totalDays * PIXELS_PER_DAY;
     rmTotalTimelineWidth   = totalTimelineWidth;
 
+    // Compute the left edge for bars with no start date.
+    // Cap at the earliest known start date, but go back at least to last month.
+    var lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    var lastMonthPx   = Math.max(0, Math.floor((lastMonthDate - timelineStart) / 86400000) * PIXELS_PER_DAY);
+    var minStartDate  = null;
+    for (var si = 0; si < data.initiatives.length; si++) {
+        var sInit = data.initiatives[si];
+        if (sInit.start_date) {
+            var sd = new Date(sInit.start_date + 'T00:00:00');
+            if (!minStartDate || sd < minStartDate) minStartDate = sd;
+        }
+        for (var se = 0; se < sInit.epics.length; se++) {
+            if (sInit.epics[se].start_date) {
+                var ed = new Date(sInit.epics[se].start_date + 'T00:00:00');
+                if (!minStartDate || ed < minStartDate) minStartDate = ed;
+            }
+        }
+    }
+    var minStartPx = minStartDate
+        ? Math.floor((minStartDate - timelineStart) / 86400000) * PIXELS_PER_DAY
+        : lastMonthPx;
+    rmNoDateLeft = Math.min(minStartPx, lastMonthPx);
 
     var html = '';
 
@@ -115,6 +150,7 @@ function initRoadmap(data) {
     html += '</div>';
 
     html += '<div class="rm-header">';
+    html += '<div class="rm-project-col rm-header-label">Project</div>';
     html += '<div class="rm-label-col rm-header-label">Initiative / Epic</div>';
     html += '<div class="rm-header-status">Status</div>';
     html += '<div class="rm-header-timeline">';
@@ -135,19 +171,17 @@ function initRoadmap(data) {
 
     // ── Scrollable body ───────────────────────────────────────────────────────
     html += '<div class="rm-outer" id="rm-outer">';
-    html += '<div class="rm-inner" style="width:' + (LABEL_WIDTH + STATUS_COL_WIDTH + totalTimelineWidth) + 'px">';
+    html += '<div class="rm-inner" style="width:' + (PROJECT_COL_WIDTH + LABEL_WIDTH + STATUS_COL_WIDTH + totalTimelineWidth) + 'px">';
     html += '<div class="rm-body">';
 
     // Gridlines + today line
     html += '<div class="rm-gridlines">';
     for (var i = 0; i < months.length; i++) {
-        var gLeft = LABEL_WIDTH + STATUS_COL_WIDTH + Math.floor((months[i] - timelineStart) / 86400000) * PIXELS_PER_DAY;
+        var gLeft = PROJECT_COL_WIDTH + LABEL_WIDTH + STATUS_COL_WIDTH + Math.floor((months[i] - timelineStart) / 86400000) * PIXELS_PER_DAY;
         html += '<div class="rm-gridline" style="left:' + gLeft + 'px"></div>';
     }
-    var today = new Date();
-    today.setHours(0, 0, 0, 0);
     if (today >= timelineStart && today <= timelineEnd) {
-        var todayLeft = LABEL_WIDTH + STATUS_COL_WIDTH + Math.floor((today - timelineStart) / 86400000) * PIXELS_PER_DAY;
+        var todayLeft = PROJECT_COL_WIDTH + LABEL_WIDTH + STATUS_COL_WIDTH + Math.floor((today - timelineStart) / 86400000) * PIXELS_PER_DAY;
         html += '<div class="rm-today-line" style="left:' + todayLeft + 'px"></div>';
     }
     html += '</div>'; // rm-gridlines
@@ -156,7 +190,10 @@ function initRoadmap(data) {
     for (var idx = 0; idx < data.initiatives.length; idx++) {
         var init   = data.initiatives[idx];
         var initId = 'rm-init-' + idx;
-        html += '<div class="rm-row rm-init-row" data-toggle="' + initId + '" data-status-category="' + escAttr(init.status_category) + '" data-item-key="' + escAttr(init.key) + '" data-project="' + escAttr(init.key.split('-')[0]) + '">';
+        var initProjKey  = init.key.split('-')[0];
+        var initProjName = projectNames[initProjKey] || initProjKey;
+        html += '<div class="rm-row rm-init-row" data-toggle="' + initId + '" data-status-category="' + escAttr(init.status_category) + '" data-item-key="' + escAttr(init.key) + '" data-project="' + escAttr(initProjKey) + '">';
+        html += '<div class="rm-project-col" title="' + escAttr(initProjName) + '">' + escHtml(initProjName) + '</div>';
         html += '<div class="rm-label-col">';
         html += '<span class="rm-expand-icon" id="icon-' + initId + '">&#9654;</span>';
         html += '<a href="' + escHtml(init.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(init.title) + '">' + escHtml(init.title) + '</a>';
@@ -182,7 +219,10 @@ function initRoadmap(data) {
 
         for (var j = 0; j < init.epics.length; j++) {
             var epic     = init.epics[j];
-            html += '<div class="rm-row rm-epic-row ' + initId + '" data-status-category="' + escAttr(epic.status_category) + '" data-item-key="' + escAttr(epic.key) + '" data-project="' + escAttr(epic.key.split('-')[0]) + '" style="display:none">';
+            var epicProjKey  = epic.key.split('-')[0];
+            var epicProjName = projectNames[epicProjKey] || epicProjKey;
+            html += '<div class="rm-row rm-epic-row ' + initId + '" data-status-category="' + escAttr(epic.status_category) + '" data-item-key="' + escAttr(epic.key) + '" data-project="' + escAttr(epicProjKey) + '" style="display:none">';
+            html += '<div class="rm-project-col rm-project-col-epic" title="' + escAttr(epicProjName) + '">' + escHtml(epicProjName) + '</div>';
             html += '<div class="rm-label-col rm-epic-label">';
             html += '<a href="' + escHtml(epic.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(epic.title) + '">' + escHtml(epic.title) + '</a>';
             html += '</div>';
@@ -404,6 +444,17 @@ function updateNavLabelFromScroll() {
 
 // ── Status category filter ────────────────────────────────────────────────────
 
+function anyEpicPassesFilter(container, initId) {
+    var epicRows = container.querySelectorAll('.' + initId);
+    if (epicRows.length === 0) return true;  // no epics — initiative stands on its own
+    for (var k = 0; k < epicRows.length; k++) {
+        var cat  = epicRows[k].getAttribute('data-status-category');
+        var proj = epicRows[k].getAttribute('data-project');
+        if (!hiddenEpicCategories[cat] && !hiddenEpicProjects[proj]) return true;
+    }
+    return false;
+}
+
 function setEpicRowsVisibility(container, initId) {
     var epicRows = container.querySelectorAll('.' + initId);
     for (var k = 0; k < epicRows.length; k++) {
@@ -420,8 +471,10 @@ function applyFilters(container) {
         var row    = initRows[i];
         var cat    = row.getAttribute('data-status-category');
         var proj   = row.getAttribute('data-project');
-        row.style.display = (hiddenInitCategories[cat] || hiddenInitProjects[proj]) ? 'none' : '';
         var initId = row.getAttribute('data-toggle');
+        var ownHidden     = !!(hiddenInitCategories[cat] || hiddenInitProjects[proj]);
+        var noEpicsVisible = initId && !anyEpicPassesFilter(container, initId);
+        row.style.display = (ownHidden || noEpicsVisible) ? 'none' : '';
         if (initId) setEpicRowsVisibility(container, initId);
     }
     if (rmRedrawArrows) rmRedrawArrows();
@@ -450,7 +503,7 @@ function renderBar(item, timelineStart, children) {
         var start = new Date(item.start_date + 'T00:00:00');
         left = Math.floor((start - timelineStart) / 86400000) * PIXELS_PER_DAY;
     } else {
-        left = 0;
+        left = rmNoDateLeft;
     }
     if (hasEnd) {
         var end = new Date(item.end_date + 'T00:00:00');
@@ -530,7 +583,7 @@ function drawDependencyArrows(data, container) {
     if (!allDeps.length) { svg.innerHTML = ''; return; }
 
     // Size SVG to cover the full scrollable body area
-    svg.setAttribute('width',  LABEL_WIDTH + STATUS_COL_WIDTH + rmTotalTimelineWidth);
+    svg.setAttribute('width',  PROJECT_COL_WIDTH + LABEL_WIDTH + STATUS_COL_WIDTH + rmTotalTimelineWidth);
     svg.setAttribute('height', body.offsetHeight);
 
     // Build key → row element lookup
@@ -569,9 +622,9 @@ function drawDependencyArrows(data, container) {
         var toLeft    = parseFloat(toBar.style.left)    || 0;
 
         // Coordinates relative to .rm-body
-        var x1 = LABEL_WIDTH + STATUS_COL_WIDTH + fromLeft + fromWidth;
+        var x1 = PROJECT_COL_WIDTH + LABEL_WIDTH + STATUS_COL_WIDTH + fromLeft + fromWidth;
         var y1 = fromRow.offsetTop + BAR_CENTER_Y;
-        var x2 = LABEL_WIDTH + STATUS_COL_WIDTH + toLeft;
+        var x2 = PROJECT_COL_WIDTH + LABEL_WIDTH + STATUS_COL_WIDTH + toLeft;
         var y2 = toRow.offsetTop + BAR_CENTER_Y;
 
         // Smooth cubic bezier; control point offset scales with horizontal distance
