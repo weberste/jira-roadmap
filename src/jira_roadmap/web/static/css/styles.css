@@ -386,8 +386,8 @@ footer code {
 }
 
 .rm-project-col {
-    width: 120px;
-    min-width: 120px;
+    width: 90px;
+    min-width: 90px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -427,7 +427,7 @@ footer code {
 /* Body label cols stick behind the project col as the timeline scrolls */
 .rm-body .rm-label-col {
     position: sticky;
-    left: 120px;
+    left: 90px;
     z-index: 5;
     background: var(--bg-secondary);
 }
@@ -569,7 +569,7 @@ footer code {
 
 .rm-body .rm-status-col {
     position: sticky;
-    left: 420px;
+    left: 390px;
     z-index: 4;
     background: var(--bg-secondary);
 }

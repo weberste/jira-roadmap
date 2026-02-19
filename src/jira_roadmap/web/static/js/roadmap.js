@@ -12,7 +12,7 @@ var STATUS_COLORS = {
 
 
 var PIXELS_PER_DAY    = 4;    // overridden at init based on container width
-var PROJECT_COL_WIDTH = 120;
+var PROJECT_COL_WIDTH = 90;
 var LABEL_WIDTH       = 300;
 var STATUS_COL_WIDTH  = 120;
 var VIEW_MONTHS       = 13;   // months shown in nav label (1 past + current + 11 future)
@@ -455,13 +455,15 @@ function anyEpicPassesFilter(container, initId) {
     return false;
 }
 
-function setEpicRowsVisibility(container, initId) {
+function setEpicRowsVisibility(container, initId, initHidden) {
     var epicRows = container.querySelectorAll('.' + initId);
     for (var k = 0; k < epicRows.length; k++) {
         var row  = epicRows[k];
         var cat  = row.getAttribute('data-status-category');
         var proj = row.getAttribute('data-project');
-        row.style.display = (expanded[initId] && !hiddenEpicCategories[cat] && !hiddenEpicProjects[proj]) ? '' : 'none';
+        // Initiative filter takes precedence: if init is hidden, epics are hidden too
+        var visible = !initHidden && expanded[initId] && !hiddenEpicCategories[cat] && !hiddenEpicProjects[proj];
+        row.style.display = visible ? '' : 'none';
     }
 }
 
@@ -472,10 +474,11 @@ function applyFilters(container) {
         var cat    = row.getAttribute('data-status-category');
         var proj   = row.getAttribute('data-project');
         var initId = row.getAttribute('data-toggle');
-        var ownHidden     = !!(hiddenInitCategories[cat] || hiddenInitProjects[proj]);
+        var ownHidden      = !!(hiddenInitCategories[cat] || hiddenInitProjects[proj]);
         var noEpicsVisible = initId && !anyEpicPassesFilter(container, initId);
-        row.style.display = (ownHidden || noEpicsVisible) ? 'none' : '';
-        if (initId) setEpicRowsVisibility(container, initId);
+        var initHidden     = ownHidden || noEpicsVisible;
+        row.style.display = initHidden ? 'none' : '';
+        if (initId) setEpicRowsVisibility(container, initId, initHidden);
     }
     if (rmRedrawArrows) rmRedrawArrows();
 }
