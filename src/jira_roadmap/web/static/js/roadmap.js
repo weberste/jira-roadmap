@@ -4,10 +4,17 @@
  */
 
 var STATUS_COLORS = {
-    'new':           '#8b949e', // gray   (To Do)
-    'indeterminate': '#0969da', // blue   (In Progress)
-    'done':          '#2da44e', // green  (Done)
-    'cancelled':     '#9e3e3e'  // red    (Cancelled)
+    'new':           '#64748b', // slate  (To Do)
+    'indeterminate': '#2563eb', // blue   (In Progress)
+    'done':          '#16a34a', // green  (Done)
+    'cancelled':     '#b91c1c'  // red    (Cancelled)
+};
+
+var BADGE_STYLES = {
+    'new':           { bg: '#f1f5f9', border: '#94a3b8', color: '#475569' },
+    'indeterminate': { bg: '#eff6ff', border: '#93c5fd', color: '#1d4ed8' },
+    'done':          { bg: '#f0fdf4', border: '#86efac', color: '#15803d' },
+    'cancelled':     { bg: '#fef2f2', border: '#fca5a5', color: '#b91c1c' }
 };
 
 
@@ -160,7 +167,8 @@ function initRoadmap(data) {
         var nextM = new Date(m.getFullYear(), m.getMonth() + 1, 1);
         var mLeft  = Math.floor((m     - timelineStart) / 86400000) * PIXELS_PER_DAY;
         var mWidth = Math.floor((nextM - m)             / 86400000) * PIXELS_PER_DAY;
-        html += '<div class="rm-month" style="left:' + mLeft + 'px;width:' + mWidth + 'px">';
+        var mClass = 'rm-month' + (i % 2 === 1 ? ' rm-month-alt' : '');
+        html += '<div class="' + mClass + '" style="left:' + mLeft + 'px;width:' + mWidth + 'px">';
         html += monthName(m) + ' ' + m.getFullYear();
         html += '</div>';
     }
@@ -182,7 +190,7 @@ function initRoadmap(data) {
     }
     if (today >= timelineStart && today <= timelineEnd) {
         var todayLeft = PROJECT_COL_WIDTH + LABEL_WIDTH + STATUS_COL_WIDTH + Math.floor((today - timelineStart) / 86400000) * PIXELS_PER_DAY;
-        html += '<div class="rm-today-line" style="left:' + todayLeft + 'px"></div>';
+        html += '<div class="rm-today-line" style="left:' + todayLeft + 'px"><span class="rm-today-label">Today</span></div>';
     }
     html += '</div>'; // rm-gridlines
 
@@ -195,7 +203,7 @@ function initRoadmap(data) {
         html += '<div class="rm-row rm-init-row" data-toggle="' + initId + '" data-status-category="' + escAttr(init.status_category) + '" data-item-key="' + escAttr(init.key) + '" data-project="' + escAttr(initProjKey) + '">';
         html += '<div class="rm-project-col" title="' + escAttr(initProjName) + '">' + escHtml(initProjName) + '</div>';
         html += '<div class="rm-label-col">';
-        html += '<span class="rm-expand-icon" id="icon-' + initId + '">&#9654;</span>';
+        html += '<span class="rm-expand-icon" id="icon-' + initId + '"></span>';
         html += '<a href="' + escHtml(init.url) + '" target="_blank" class="rm-title-link" title="' + escAttr(init.title) + '">' + escHtml(init.title) + '</a>';
         html += '</div>';
         html += '<div class="rm-status-col">' + renderStatusBadge(init.status, init.status_category) + '</div>';
@@ -346,7 +354,7 @@ function initRoadmap(data) {
             var toggleId = this.getAttribute('data-toggle');
             expanded[toggleId] = !expanded[toggleId];
             var icon = document.getElementById('icon-' + toggleId);
-            if (icon) icon.innerHTML = expanded[toggleId] ? '&#9660;' : '&#9654;';
+            if (icon) icon.classList.toggle('is-expanded', !!expanded[toggleId]);
             setEpicRowsVisibility(container, toggleId);
             if (rmRedrawArrows) rmRedrawArrows();
         });
@@ -486,8 +494,9 @@ function applyFilters(container) {
 // ── Rendering helpers ─────────────────────────────────────────────────────────
 
 function renderStatusBadge(status, statusCategory) {
-    var color = STATUS_COLORS[statusCategory] || STATUS_COLORS['new'];
-    return '<span class="rm-status-badge" style="background:' + color + '" title="' + escAttr(status) + '">' + escHtml(status) + '</span>';
+    var s = BADGE_STYLES[statusCategory] || BADGE_STYLES['new'];
+    var style = 'background:' + s.bg + ';border-color:' + s.border + ';color:' + s.color;
+    return '<span class="rm-status-badge" style="' + style + '" title="' + escAttr(status) + '">' + escHtml(status) + '</span>';
 }
 
 function renderBar(item, timelineStart, children) {
@@ -529,10 +538,10 @@ function renderBar(item, timelineStart, children) {
         var p2 = p1 + cancelledPct;
         var p3 = p2 + inpPct;
         bg = 'linear-gradient(to right,' +
-            '#2da44e 0%,#2da44e ' + p1 + '%,' +
-            '#9e3e3e ' + p1 + '%,#9e3e3e ' + p2 + '%,' +
-            '#0969da ' + p2 + '%,#0969da ' + p3 + '%,' +
-            '#8b949e ' + p3 + '%,#8b949e 100%)';
+            '#16a34a 0%,#16a34a ' + p1 + '%,' +
+            '#b91c1c ' + p1 + '%,#b91c1c ' + p2 + '%,' +
+            '#2563eb ' + p2 + '%,#2563eb ' + p3 + '%,' +
+            '#64748b ' + p3 + '%,#64748b 100%)';
     } else {
         bg = STATUS_COLORS[item.status_category] || STATUS_COLORS['new'];
     }
@@ -598,14 +607,18 @@ function drawDependencyArrows(data, container) {
 
     var defs =
         '<defs>' +
-        '<marker id="rm-arrowhead" markerWidth="7" markerHeight="7"' +
-        ' refX="6" refY="3.5" orient="auto">' +
-        '<path d="M0,0.5 L0,6.5 L6,3.5 z" fill="rgba(100,100,100,0.75)"/>' +
+        '<filter id="rm-arrow-glow" x="-40%" y="-40%" width="180%" height="180%">' +
+        '<feGaussianBlur stdDeviation="2" result="blur"/>' +
+        '<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>' +
+        '</filter>' +
+        '<marker id="rm-arrowhead" markerWidth="10" markerHeight="8"' +
+        ' refX="8" refY="4" orient="auto">' +
+        '<path d="M0,0.5 L0,7.5 L9,4 z" fill="#f59e0b"/>' +
         '</marker>' +
         '</defs>';
 
     var paths = '';
-    var BAR_CENTER_Y = 6 + 10;  // bar top-offset + half bar height
+    var BAR_CENTER_Y = 5 + 11;  // bar top-offset + half bar height
 
     for (var i = 0; i < allDeps.length; i++) {
         var fromKey = allDeps[i][0];
@@ -637,10 +650,13 @@ function drawDependencyArrows(data, container) {
                  ' ' + (x2 - cp) + ',' + y2 +
                  ' ' + x2 + ',' + y2;
 
-        paths += '<path d="' + d + '"' +
-                 ' stroke="rgba(100,100,100,0.65)"' +
-                 ' stroke-width="1.5"' +
+        paths += '<path class="rm-dep-path" d="' + d + '"' +
+                 ' stroke="#f59e0b"' +
+                 ' stroke-width="1.75"' +
+                 ' stroke-dasharray="5,3"' +
                  ' fill="none"' +
+                 ' opacity="0.85"' +
+                 ' filter="url(#rm-arrow-glow)"' +
                  ' marker-end="url(#rm-arrowhead)"/>';
     }
 

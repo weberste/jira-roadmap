@@ -459,6 +459,10 @@ footer code {
     box-sizing: border-box;
 }
 
+.rm-month-alt {
+    background: rgba(0, 0, 0, 0.025);
+}
+
 .rm-body {
     position: relative;
 }
@@ -486,9 +490,29 @@ footer code {
     top: 0;
     bottom: 0;
     width: 2px;
-    background: var(--error);
-    opacity: 0.5;
+    background: #ef4444;
+    opacity: 1;
     z-index: 1;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5), 0 0 2px rgba(239, 68, 68, 0.8);
+}
+
+.rm-today-label {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #ef4444;
+    background: #fff;
+    padding: 1px 5px 2px;
+    border-radius: 4px;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .rm-row {
@@ -503,6 +527,7 @@ footer code {
 
 .rm-row:hover .rm-project-col {
     background: #e6f0fb;
+    box-shadow: inset 3px 0 0 var(--accent-primary);
 }
 
 .rm-row:hover .rm-label-col {
@@ -527,10 +552,29 @@ footer code {
 }
 
 .rm-expand-icon {
-    font-size: 10px;
-    color: var(--text-muted);
-    display: inline-block;
-    width: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    font-size: 0;
+}
+
+.rm-expand-icon::before {
+    content: '';
+    display: block;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 4px 0 4px 6px;
+    border-color: transparent transparent transparent var(--text-muted);
+    transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.rm-expand-icon.is-expanded::before {
+    transform: rotate(90deg);
+    border-color: transparent transparent transparent var(--accent-primary);
 }
 
 .rm-title-link {
@@ -594,15 +638,15 @@ footer code {
 
 .rm-status-badge {
     display: inline-block;
-    padding: 2px 7px;
+    padding: 2px 8px;
     border-radius: 10px;
     font-size: 11px;
     font-weight: 500;
-    color: white;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
+    border: 1px solid transparent;
 }
 
 /* ===== Status filter dropdowns ===== */
@@ -687,17 +731,25 @@ footer code {
 
 .rm-bar {
     position: absolute;
-    top: 6px;
-    height: 20px;
-    border-radius: 4px;
-    opacity: 0.85;
-    transition: opacity var(--transition);
+    top: 5px;
+    height: 22px;
+    border-radius: 11px;
+    opacity: 0.92;
+    transition: opacity var(--transition), box-shadow var(--transition);
     z-index: 2;
     cursor: default;
+    box-shadow:
+        0 1px 4px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.10);
 }
 
 .rm-bar:hover {
     opacity: 1;
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.12);
 }
 
 .rm-deps-toggle-on {
@@ -713,6 +765,15 @@ footer code {
     pointer-events: none;
     overflow: visible;
     z-index: 3;
+}
+
+/* ===== Dependency arrow animation ===== */
+@keyframes rm-dash-flow {
+    to { stroke-dashoffset: -20; }
+}
+
+.rm-dep-path {
+    animation: rm-dash-flow 1.4s linear infinite;
 }
 
 .rm-no-dates {
